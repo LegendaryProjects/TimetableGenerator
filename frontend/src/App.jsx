@@ -8,10 +8,9 @@ import LoginPage from './components/auth/LoginPage';
 import ScheduleControls from './components/viewer/ScheduleControls';
 import TimetableGrid from './components/viewer/TimetableGrid';
 import HodStudio from './components/hod/HodStudio';
-import { DEPARTMENTS } from './data/mockAcademicData';
 
 function MainAppContent() {
-  const { isEditingHodStudio, selectedDepartment } = useTimetable();
+  const { isEditingHodStudio, selectedDepartment, departments } = useTimetable();
   const { isHod, currentUser } = useAuth();
   const { isLight } = useTheme();
 
@@ -22,7 +21,7 @@ function MainAppContent() {
 
   // Dynamic department of the active persona/user
   const activeDeptId = currentUser?.department || selectedDepartment || 'IT';
-  const deptObj = DEPARTMENTS.find(d => d.id === activeDeptId) || { name: 'Information Technology', code: 'IT' };
+  const deptObj = departments.find(d => d.id === activeDeptId) || { name: activeDeptId, code: activeDeptId };
   const deptDisplayName = `Dept. of ${deptObj.name}`;
 
   return (

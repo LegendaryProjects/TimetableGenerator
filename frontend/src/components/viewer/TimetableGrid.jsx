@@ -2,7 +2,6 @@ import React from 'react';
 import { useTimetable } from '../../context/TimetableContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { DAYS, TIME_SLOTS, DEPARTMENTS, PROFESSORS } from '../../data/mockAcademicData';
 import TimetableSlot from './TimetableSlot';
 import ExportPdfButton from './ExportPdfButton';
 import { Clock, Calendar, AlertCircle, Users, Sliders, CalendarX, BookOpen, Layers } from 'lucide-react';
@@ -25,18 +24,22 @@ export default function TimetableGrid() {
   const { 
     currentViewerTimetable, 
     selectedDepartment, 
+    selectedSemester,
     selectedYear, 
     selectedSection, 
     selectedFacultyId,
     viewMode,
-    setIsEditingHodStudio
+    setIsEditingHodStudio,
+    departments,
+    professors,
+    workingDays
   } = useTimetable();
   const { isHod } = useAuth();
   const { isDark } = useTheme();
 
   const timetable = currentViewerTimetable;
-  const deptObj = DEPARTMENTS.find(d => d.id === selectedDepartment) || DEPARTMENTS[0];
-  const facultyObj = PROFESSORS.find(p => p.id === selectedFacultyId);
+  const deptObj = departments.find(d => d.id === selectedDepartment) || { id: selectedDepartment, name: selectedDepartment };
+  const facultyObj = professors.find(p => p.id === selectedFacultyId);
   const isFacultyView = viewMode === 'faculty';
 
   if (!timetable) {
@@ -54,7 +57,7 @@ export default function TimetableGrid() {
           <p className={`text-sm max-w-sm mx-auto leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
             {isHod
               ? `Configure constraints in HoD Studio to generate schedules for ${deptObj.name}.`
-              : `The academic timetable for Year ${selectedYear} Section ${selectedSection} is not published yet.`}
+              : `The academic timetable for Semester ${selectedSemester || 5} Section ${selectedSection} is not published yet.`}
           </p>
         </div>
         {isHod && (
@@ -116,7 +119,7 @@ export default function TimetableGrid() {
                 <span className={`text-xs sm:text-sm font-semibold px-2.5 py-0.5 rounded-md border ${
                   isDark ? 'bg-blue-950/60 text-blue-300 border-blue-800/40' : 'bg-blue-50 text-blue-700 border-blue-200'
                 }`}>
-                  {isFacultyView ? facultyObj?.designation : `Year ${selectedYear} • Section ${selectedSection}`}
+                  {isFacultyView ? facultyObj?.designation : `Semester ${timetable.semester || selectedSemester || 5} • Section ${selectedSection}`}
                 </span>
                 <span className={`text-xs sm:text-sm font-medium px-2.5 py-0.5 rounded-md border ${
                   isDark ? 'bg-slate-800 text-slate-300 border-slate-700' : 'bg-slate-100 text-slate-600 border-slate-200'
@@ -127,7 +130,7 @@ export default function TimetableGrid() {
               <p className={`text-xs sm:text-sm mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 {isFacultyView
                   ? `Teaching Schedule • Department of ${deptObj.name}`
-                  : `Location: ${timetable.assignedClassroom || 'CR 2.2 LHC-D, NITK Surathkal'}`}
+                  : `Department of ${deptObj.name} • Class Timetable`}
               </p>
             </div>
           </div>
@@ -177,6 +180,9 @@ export default function TimetableGrid() {
                         : isDark ? 'text-slate-100' : 'text-slate-800'
                     }`}>
                       {p.label}
+                      {p.id === 1 && (
+                        <span className="text-[9px] font-medium text-amber-500 block">No Classes</span>
+                      )}
                     </div>
                     <div className="text-[11px] font-mono text-slate-400 mt-0.5 font-medium">
                       {p.time}
@@ -186,7 +192,7 @@ export default function TimetableGrid() {
               </tr>
             </thead>
             <tbody>
-              {DAYS.map(day => (
+              {workingDays.map(day => (
                 <tr key={day} className={`border-b last:border-b-0 ${
                   isDark ? 'border-slate-800/60' : 'border-slate-100'
                 }`}>
@@ -227,15 +233,25 @@ export default function TimetableGrid() {
                     const isContinuation = isLab && prevSlot && (prevSlot.isLab || prevSlot.type === 'lab') && prevSlot.subjectCode === slot.subjectCode;
 
                     if (isContinuation) {
-                      return null; // The parent cell expands across with colSpan=2
+                      return null; // The parent cell expands across with dynamic colSpan
                     }
 
-                    const nextP = idx < PERIODS.length - 1 ? PERIODS[idx + 1] : null;
-                    const nextSlot = nextP && !nextP.isBreak ? timetable?.grid?.[day]?.[nextP.id] : null;
-                    const isLabSpan = isLab && nextSlot && (nextSlot.isLab || nextSlot.type === 'lab') && nextSlot.subjectCode === slot.subjectCode;
+                    let labColSpan = 1;
+                    if (isLab) {
+                      for (let k = idx + 1; k < PERIODS.length; k++) {
+                        const forwardP = PERIODS[k];
+                        if (forwardP.isBreak) break;
+                        const forwardSlot = timetable?.grid?.[day]?.[forwardP.id];
+                        if (forwardSlot && (forwardSlot.isLab || forwardSlot.type === 'lab') && forwardSlot.subjectCode === slot.subjectCode) {
+                          labColSpan++;
+                        } else {
+                          break;
+                        }
+                      }
+                    }
 
                     return (
-                      <td key={p.id} colSpan={isLabSpan ? 2 : 1} className="p-1">
+                      <td key={p.id} colSpan={labColSpan} className="p-1">
                         <TimetableSlot
                           slot={slot}
                           day={day}

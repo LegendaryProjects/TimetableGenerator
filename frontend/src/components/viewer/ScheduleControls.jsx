@@ -2,16 +2,30 @@ import React, { useEffect } from 'react';
 import { useTimetable } from '../../context/TimetableContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { DEPARTMENTS, YEARS, SECTIONS, PROFESSORS } from '../../data/mockAcademicData';
 import { Users, GraduationCap, Lock, CheckCircle2, UserCheck } from 'lucide-react';
+
+const SEMESTERS_LIST = [
+  { id: '1', label: 'Sem 1', value: 1 },
+  { id: '2', label: 'Sem 2', value: 2 },
+  { id: '3', label: 'Sem 3', value: 3 },
+  { id: '4', label: 'Sem 4', value: 4 },
+  { id: '5', label: 'Sem 5', value: 5 },
+  { id: '6', label: 'Sem 6', value: 6 },
+  { id: '7', label: 'Sem 7', value: 7 },
+  { id: '8', label: 'Sem 8', value: 8 }
+];
+
+const SECTIONS_LIST = ['A', 'B', 'C', 'D'];
 
 export default function ScheduleControls() {
   const { 
     selectedDepartment, setSelectedDepartment,
+    selectedSemester, setSelectedSemester,
     selectedYear, setSelectedYear,
     selectedSection, setSelectedSection,
     selectedFacultyId, setSelectedFacultyId,
-    viewMode, setViewMode
+    viewMode, setViewMode,
+    professors
   } = useTimetable();
   const { isHod, currentUser } = useAuth();
   const { isDark } = useTheme();
@@ -20,9 +34,9 @@ export default function ScheduleControls() {
   const isFaculty = currentUser?.userType === 'Faculty' && !isHod;
 
   // Find professor object matching the logged-in faculty
-  const loggedInFaculty = PROFESSORS.find(
+  const loggedInFaculty = professors.find(
     p => p.email === currentUser?.email || p.name === currentUser?.name
-  ) || PROFESSORS.find(p => p.department === (currentUser?.department || 'IT'));
+  ) || professors.find(p => p.department === (currentUser?.department || 'IT'));
 
   // Lock selectedFacultyId to the logged-in faculty member
   useEffect(() => {
@@ -73,7 +87,7 @@ export default function ScheduleControls() {
           </>
         )}
 
-        {/* 1. Student Role: Locked strictly to their Department, Year & Section */}
+        {/* 1. Student Role: Locked strictly to their Department, Semester & Section */}
         {isStudent && (
           <div className="flex items-center gap-2">
             <span className={`inline-flex items-center gap-2 h-8 px-3 rounded-lg text-xs font-bold border ${
@@ -82,7 +96,7 @@ export default function ScheduleControls() {
                 : 'bg-blue-50 border-blue-200 text-blue-800'
             }`}>
               <CheckCircle2 className="w-3.5 h-3.5 text-blue-400" />
-              <span>Enrolled: Dept. of {currentUser?.department} • Year {currentUser?.year || 3} - Section {currentUser?.section || 'A'}</span>
+              <span>Enrolled: Dept. of {currentUser?.department} • Sem {currentUser?.semester || ((currentUser?.year * 2) - 1) || 5} - Section {currentUser?.section || 'A'}</span>
             </span>
           </div>
         )}
@@ -98,25 +112,25 @@ export default function ScheduleControls() {
               <span>Faculty: {currentUser?.name} • Dept. of {currentUser?.department}</span>
             </span>
 
-            {/* If viewing classroom timetables, allow switching Year & Section within department */}
+            {/* If viewing classroom timetables, allow switching Semester & Section within department */}
             {viewMode === 'student' && (
               <>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-slate-400">Year:</span>
+                  <span className="text-xs font-medium text-slate-400">Sem:</span>
                   <div className={`flex rounded-lg p-0.5 border h-8.5 items-center ${
                     isDark ? 'bg-[#090d16] border-[#1e293b]' : 'bg-slate-100 border-slate-200'
                   }`}>
-                    {YEARS.map(y => (
+                    {SEMESTERS_LIST.map(s => (
                       <button
-                        key={y.id}
-                        onClick={() => setSelectedYear(y.value)}
-                        className={`h-7 px-2.5 rounded-md text-xs font-semibold transition-all ${
-                          Number(selectedYear) === y.value 
+                        key={s.id}
+                        onClick={() => setSelectedSemester(s.value)}
+                        className={`h-7 px-2 rounded-md text-xs font-semibold transition-all ${
+                          Number(selectedSemester) === s.value 
                             ? 'bg-blue-600 text-white shadow-sm' 
                             : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
                         }`}
                       >
-                        {y.value}
+                        {s.value}
                       </button>
                     ))}
                   </div>
@@ -127,7 +141,7 @@ export default function ScheduleControls() {
                   <div className={`flex rounded-lg p-0.5 border h-8.5 items-center ${
                     isDark ? 'bg-[#090d16] border-[#1e293b]' : 'bg-slate-100 border-slate-200'
                   }`}>
-                    {SECTIONS.slice(0, 3).map(s => (
+                    {SECTIONS_LIST.slice(0, 3).map(s => (
                       <button
                         key={s}
                         onClick={() => setSelectedSection(s)}
@@ -147,7 +161,7 @@ export default function ScheduleControls() {
           </div>
         )}
 
-        {/* 3. HoD Role: Department Admin with full access across all years, sections, and faculty in their department */}
+        {/* 3. HoD Role: Department Admin with full access across all semesters, sections, and faculty in their department */}
         {isHod && (
           <>
             <div className="flex items-center gap-2">
@@ -163,21 +177,21 @@ export default function ScheduleControls() {
             {viewMode === 'student' && (
               <>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-slate-400">Year:</span>
+                  <span className="text-xs font-medium text-slate-400">Sem:</span>
                   <div className={`flex rounded-lg p-0.5 border h-8.5 items-center ${
                     isDark ? 'bg-[#090d16] border-[#1e293b]' : 'bg-slate-100 border-slate-200'
                   }`}>
-                    {YEARS.map(y => (
+                    {SEMESTERS_LIST.map(s => (
                       <button
-                        key={y.id}
-                        onClick={() => setSelectedYear(y.value)}
-                        className={`h-7 px-2.5 rounded-md text-xs font-semibold transition-all ${
-                          Number(selectedYear) === y.value 
+                        key={s.id}
+                        onClick={() => setSelectedSemester(s.value)}
+                        className={`h-7 px-2 rounded-md text-xs font-semibold transition-all ${
+                          Number(selectedSemester) === s.value 
                             ? 'bg-blue-600 text-white shadow-sm' 
                             : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
                         }`}
                       >
-                        {y.value}
+                        {s.value}
                       </button>
                     ))}
                   </div>
@@ -188,7 +202,7 @@ export default function ScheduleControls() {
                   <div className={`flex rounded-lg p-0.5 border h-8.5 items-center ${
                     isDark ? 'bg-[#090d16] border-[#1e293b]' : 'bg-slate-100 border-slate-200'
                   }`}>
-                    {SECTIONS.slice(0, 3).map(s => (
+                    {SECTIONS_LIST.slice(0, 3).map(s => (
                       <button
                         key={s}
                         onClick={() => setSelectedSection(s)}
@@ -216,7 +230,7 @@ export default function ScheduleControls() {
                     isDark ? 'bg-[#090d16] border-[#1e293b] text-slate-200' : 'bg-white border-slate-200 text-slate-800'
                   }`}
                 >
-                  {PROFESSORS.filter(p => p.department === (currentUser?.department || selectedDepartment)).map(p => (
+                  {professors.map(p => (
                     <option key={p.id} value={p.id}>{p.name} ({p.designation})</option>
                   ))}
                 </select>

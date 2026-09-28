@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { DEPARTMENT_HODS } from '../data/mockAcademicData';
 
 const AuthContext = createContext(null);
 
@@ -8,6 +7,7 @@ const AuthContext = createContext(null);
 const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
 
 export function AuthProvider({ children }) {
+  const [departmentHods, setDepartmentHods] = useState([]);
   const [currentUser, setCurrentUser] = useState(() => {
     const saved = localStorage.getItem('nitk_user');
     const token = localStorage.getItem('nitk_token');
@@ -34,6 +34,21 @@ export function AuthProvider({ children }) {
   const [authModalOpen, setAuthModalOpen] = useState(!currentUser);
   const [authModalTab, setAuthModalTab] = useState('login'); // 'login' | 'signup'
   const [loginType, setLoginType] = useState('HOD'); // 'HOD' | 'GENERAL'
+
+  // Fetch verified HoDs from backend database
+  useEffect(() => {
+    async function loadHods() {
+      try {
+        const res = await api.getHods();
+        if (res && res.hods && res.hods.length > 0) {
+          setDepartmentHods(res.hods);
+        }
+      } catch (err) {
+        console.error('Failed to load HoD accounts from database:', err);
+      }
+    }
+    loadHods();
+  }, []);
 
   // Periodic 3-hour session expiry check
   useEffect(() => {
@@ -66,9 +81,13 @@ export function AuthProvider({ children }) {
    */
   const login = async ({ email, password, hodId, type = 'GENERAL' }) => {
     let loginEmail = email;
+    let targetHodId = hodId;
     if (type === 'HOD') {
-      const selectedHod = DEPARTMENT_HODS.find(h => h.id === hodId) || DEPARTMENT_HODS[0];
-      loginEmail = selectedHod.email;
+      const selectedHod = departmentHods.find(h => h.id === hodId || h.hodId === hodId || h.department === hodId) || departmentHods[0];
+      if (selectedHod) {
+        loginEmail = selectedHod.email;
+        targetHodId = selectedHod.id;
+      }
     }
 
     if (!loginEmail || !loginEmail.trim()) {
@@ -79,7 +98,7 @@ export function AuthProvider({ children }) {
     }
 
     // Direct database authentication via API
-    const res = await api.login({ email: loginEmail.trim().toLowerCase(), password, hodId, type });
+    const res = await api.login({ email: loginEmail.trim().toLowerCase(), password, hodId: targetHodId, type });
     if (!res || !res.user) {
       throw new Error('Authentication failed. User record not found.');
     }
@@ -95,16 +114,18 @@ export function AuthProvider({ children }) {
   /**
    * User Signup handler connecting strictly to Flask backend & SQL Database
    */
-  const signup = async ({ name, department, year, section, email, password, role = 'VIEWER', userType = 'Student', hodId }) => {
+  const signup = async ({ name, department, year, semester, section, email, password, role = 'VIEWER', userType = 'Student', hodId }) => {
     let signupEmail = email;
     let signupName = name;
     let signupDept = department || 'IT';
 
     if (role === 'HOD') {
-      const selectedHod = DEPARTMENT_HODS.find(h => h.id === hodId) || DEPARTMENT_HODS[0];
-      signupEmail = selectedHod.email;
-      signupName = selectedHod.name;
-      signupDept = selectedHod.department;
+      const selectedHod = departmentHods.find(h => h.id === hodId || h.hodId === hodId || h.department === hodId) || departmentHods[0];
+      if (selectedHod) {
+        signupEmail = selectedHod.email;
+        signupName = selectedHod.name;
+        signupDept = selectedHod.department;
+      }
     }
 
     if (!signupEmail || !signupEmail.trim()) {
@@ -117,10 +138,14 @@ export function AuthProvider({ children }) {
       throw new Error('Password must be at least 4 characters long.');
     }
 
+    const semVal = semester ? Number(semester) : (year ? (Number(year) * 2 - 1) : 5);
+    const yrVal = Math.ceil(semVal / 2);
+
     const res = await api.register({
       name: signupName.trim(),
       department: signupDept,
-      year: year ? Number(year) : 3,
+      year: yrVal,
+      semester: semVal,
       section: section || 'A',
       email: signupEmail.trim().toLowerCase(),
       password,
@@ -161,7 +186,7 @@ export function AuthProvider({ children }) {
       login,
       signup,
       logout,
-      departmentHods: DEPARTMENT_HODS
+      departmentHods
     }}>
       {children}
     </AuthContext.Provider>

@@ -9,7 +9,7 @@ import datetime
 import bcrypt
 from functools import wraps
 from backend.database import db
-from backend.models import User, LogFile
+from backend.models import User, Department, LogFile
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
@@ -35,6 +35,8 @@ def generate_token(user):
         'name': user.name,
         'department': user.department,
         'year': user.year,
+        'semester': getattr(user, 'semester', ((user.year * 2) - 1) if user.year else 5),
+        'section': getattr(user, 'section', 'A'),
         'userType': user.user_type,
         'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=3)  # 3-hour session timeout
     }
@@ -97,7 +99,14 @@ def register():
     name = data.get('name', '').strip()
     role = data.get('role', 'VIEWER')
     department = data.get('department', 'IT')
-    year = data.get('year', 3)
+    semester = data.get('semester')
+    if semester is not None and str(semester).strip():
+        semester = int(semester)
+        year = (semester + 1) // 2
+    else:
+        year = int(data.get('year', 3))
+        semester = (year * 2) - 1
+    section = data.get('section', 'A')
     user_type = data.get('userType', 'Student')
 
     if not email or not password or not name:
@@ -114,6 +123,8 @@ def register():
         role=role,
         department=department,
         year=year,
+        semester=semester,
+        section=section,
         user_type=user_type
     )
     db.session.add(new_user)
@@ -136,6 +147,31 @@ def register():
     }), 201
 
 
+@auth_bp.route('/hods', methods=['GET'])
+def get_hods():
+    """
+    Returns verified HoD accounts for all departments from the database
+    """
+    hod_users = User.query.filter_by(role='HoD').all()
+    departments = {d.id: d.name for d in Department.query.all()}
+    
+    result = []
+    for u in hod_users:
+        dept_name = departments.get(u.department, u.department)
+        result.append({
+            'id': u.user_id,
+            'name': u.name,
+            'department': u.department,
+            'departmentName': dept_name,
+            'designation': f"Professor & HoD ({dept_name})",
+            'email': u.email,
+            'hodId': u.user_id
+        })
+    # Sort by department id
+    result.sort(key=lambda x: x['department'])
+    return jsonify({'hods': result}), 200
+
+
 @auth_bp.route('/login', methods=['POST'])
 def login():
     data = request.get_json() or {}
@@ -146,12 +182,21 @@ def login():
 
     user = None
     if login_type == 'HOD' and hod_id:
-        if hod_id == 'hod_it':
-            email = 'hod.it@nitk.edu.in'
-        elif hod_id == 'hod_cse':
-            email = 'hod.cse@nitk.edu.in'
+        user = User.query.filter(
+            (User.user_id == hod_id) |
+            (User.department == hod_id) |
+            (User.email == hod_id.lower())
+        ).filter_by(role='HoD').first()
 
-    if email:
+        if not user:
+            dept = Department.query.filter((Department.hod_id == hod_id) | (Department.id == hod_id)).first()
+            if dept:
+                user = User.query.filter_by(department=dept.id, role='HoD').first()
+
+        if user:
+            email = user.email
+
+    if not user and email:
         user = User.query.filter_by(email=email).first()
 
     if not user:

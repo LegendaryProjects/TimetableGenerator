@@ -5,9 +5,8 @@
 
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
-import { DAYS } from '../data/mockAcademicData';
-
 export async function exportNoticeBoardPdf(timetable, academicOptions = {}) {
+  const DAYS = academicOptions.workingDays || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
   try {
     const doc = new jsPDF({
       orientation: 'landscape',
@@ -37,15 +36,15 @@ export async function exportNoticeBoardPdf(timetable, academicOptions = {}) {
 
     // --- Institutional Title Box (3 BORDERED ROWS) ---
     const deptFullName = timetable.departmentName || (
-      timetable.department === 'IT' ? 'Information Technology' :
-      timetable.department === 'CSE' ? 'Computer Science and Engineering' :
-      timetable.department === 'ECE' ? 'Electronics and Communication Engineering' :
-      'Artificial Intelligence & Data Science'
+      academicOptions.departments?.find(d => d.id === timetable.department)?.name || timetable.department
     );
 
-    const semRoman = timetable.year === 1 ? 'I' : timetable.year === 2 ? 'III' : timetable.year === 3 ? 'V' : 'VII';
-    const semSuffix = timetable.year === 1 ? 'st' : timetable.year === 2 ? 'rd' : 'th';
-    const semStr = `${semRoman}${semSuffix} Semester B.Tech.(${timetable.department}) (Sec ${timetable.section || 'A'}) Time Table for ODD Semester of the Academic Year 2026 - 2027`;
+    const semNum = Number(timetable.semester || (timetable.year ? (timetable.year * 2 - 1) : 5));
+    const romanNumerals = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
+    const semRoman = romanNumerals[semNum] || String(semNum);
+    const semSuffix = semNum === 1 ? 'st' : semNum === 2 ? 'nd' : semNum === 3 ? 'rd' : 'th';
+    const semTerm = (semNum % 2 === 1) ? 'ODD' : 'EVEN';
+    const semStr = `${semRoman}${semSuffix} Semester B.Tech.(${timetable.department}) (Sec ${timetable.section || 'A'}) Time Table for ${semTerm} Semester of the Academic Year 2026 - 2027`;
 
     doc.autoTable({
       head: [
@@ -113,7 +112,7 @@ export async function exportNoticeBoardPdf(timetable, academicOptions = {}) {
           }
 
           row.push({
-            content: `${slot.subjectCode} Lab`,
+            content: slot.roomName ? `${slot.subjectCode} Lab (${slot.roomName})` : `${slot.subjectCode} Lab`,
             colSpan: span,
             styles: {
               fillColor: [200, 247, 197],
@@ -190,7 +189,7 @@ export async function exportNoticeBoardPdf(timetable, academicOptions = {}) {
           }
 
           row.push({
-            content: `${slot.subjectCode} Lab`,
+            content: slot.roomName ? `${slot.subjectCode} Lab (${slot.roomName})` : `${slot.subjectCode} Lab`,
             colSpan: span,
             styles: {
               fillColor: [200, 247, 197],
@@ -400,7 +399,7 @@ export async function exportNoticeBoardPdf(timetable, academicOptions = {}) {
     doc.text('HoD', pageWidth - margin - 25, sigY, { align: 'center' });
 
     // Save File
-    const filename = `NITK_${timetable.department}_Year${timetable.year}_Sec${timetable.section}_Timetable.pdf`;
+    const filename = `NITK_${timetable.department}_Sem${timetable.semester || timetable.year}_Sec${timetable.section}_Timetable.pdf`;
     doc.save(filename);
     return true;
   } catch (error) {

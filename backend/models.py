@@ -22,6 +22,7 @@ class User(db.Model):
     role = db.Column(db.String(20), nullable=False, default='VIEWER')  # 'HoD' or 'VIEWER'
     department = db.Column(db.String(10), nullable=False, default='IT')
     year = db.Column(db.Integer, nullable=True, default=3)
+    semester = db.Column(db.Integer, nullable=True, default=5)
     section = db.Column(db.String(5), nullable=True, default='A')
     user_type = db.Column(db.String(20), nullable=True, default='Student')  # 'Student' or 'Faculty'
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -34,6 +35,7 @@ class User(db.Model):
             'role': self.role,
             'department': self.department,
             'year': self.year,
+            'semester': self.semester or ((self.year * 2) - 1 if self.year else 5),
             'section': self.section or 'A',
             'userType': self.user_type,
             'createdAt': self.created_at.isoformat() if self.created_at else None
@@ -78,15 +80,13 @@ class Professor(db.Model):
     name = db.Column(db.String(100), nullable=False)
     department_id = db.Column(db.String(10), db.ForeignKey('departments.id'), nullable=False)
     designation = db.Column(db.String(100), nullable=False, default='Assistant Professor')
-    cabin = db.Column(db.String(50), nullable=True)
 
     def to_dict(self):
         return {
             'id': self.id,
             'name': self.name,
             'department': self.department_id,
-            'designation': self.designation,
-            'cabin': self.cabin
+            'designation': self.designation
         }
 
 
@@ -101,6 +101,7 @@ class Subject(db.Model):
     name = db.Column(db.String(150), nullable=False)
     department_id = db.Column(db.String(10), db.ForeignKey('departments.id'), nullable=False)
     year = db.Column(db.Integer, nullable=False, default=3)
+    semester = db.Column(db.Integer, nullable=False, default=5)
     credits = db.Column(db.Integer, nullable=False, default=3)
     ltp = db.Column(db.String(20), nullable=False, default='(3-0-0)')
     type = db.Column(db.String(20), nullable=False, default='theory')  # 'theory' or 'lab'
@@ -117,6 +118,7 @@ class Subject(db.Model):
             'name': self.name,
             'department': self.department_id,
             'year': self.year,
+            'semester': self.semester or ((self.year * 2) - 1 if self.year else 5),
             'credits': self.credits,
             'ltp': self.ltp,
             'type': self.type,
@@ -181,6 +183,7 @@ class Timetable(db.Model):
     id = db.Column(db.String(50), primary_key=True, default=lambda: str(uuid.uuid4()))
     department_id = db.Column(db.String(10), db.ForeignKey('departments.id'), nullable=False, index=True)
     year = db.Column(db.Integer, nullable=False)
+    semester = db.Column(db.Integer, nullable=False, default=5)
     section = db.Column(db.String(5), nullable=False)
     status = db.Column(db.String(20), nullable=False, default='DRAFT')  # 'DRAFT' or 'APPROVED'
     assigned_classroom = db.Column(db.String(150), nullable=True)
@@ -196,6 +199,7 @@ class Timetable(db.Model):
             'id': self.id,
             'department': self.department_id,
             'year': self.year,
+            'semester': self.semester or ((self.year * 2) - 1 if self.year else 5),
             'section': self.section,
             'status': self.status,
             'assignedClassroom': self.assigned_classroom,

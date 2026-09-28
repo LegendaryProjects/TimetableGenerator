@@ -6,7 +6,7 @@ Handles fetching academic entity options from SQL database, generating zero-over
 import uuid
 from flask import Blueprint, request, jsonify
 from backend.database import db
-from backend.models import Department, Subject, Professor, Classroom, Laboratory, Timetable, LogFile
+from backend.models import Department, Subject, Professor, Classroom, Laboratory, Timetable, LogFile, User
 from backend.modules.user_auth.auth_routes import token_required, role_required
 from backend.modules.genetic_algorithm.engine import TimetableConstraintEngine
 
@@ -18,26 +18,59 @@ def get_options():
     """
     Returns valid academic dropdown constraints from D2: academic-data store (SRS FR-003)
     """
-    dept_code = request.args.get('department', 'IT')
+    dept_code = request.args.get('department')
     year_num = request.args.get('year', type=int)
+    sem_num = request.args.get('semester', type=int)
 
     departments = Department.query.all()
+    # Map HoDs from users table to departments
+    hod_map = {u.department: u for u in User.query.filter_by(role='HoD').all()}
+    dept_list = []
+    for d in departments:
+        d_dict = d.to_dict()
+        hod = hod_map.get(d.id)
+        if hod:
+            d_dict['hodEmail'] = hod.email
+            d_dict['hodName'] = hod.name
+            d_dict['hodUserId'] = hod.user_id
+        dept_list.append(d_dict)
+
     professors = Professor.query.filter_by(department_id=dept_code).all() if dept_code else Professor.query.all()
     classrooms = Classroom.query.filter_by(department_id=dept_code).all() if dept_code else Classroom.query.all()
-    laboratories = Laboratory.query.filter_by(department_id=dept_code).all() if dept_code else Laboratory.query.all()
+    lab_dept = 'IT' if dept_code == 'AI' else dept_code
+    laboratories = Laboratory.query.filter_by(department_id=lab_dept).all() if lab_dept else Laboratory.query.all()
 
-    subject_query = Subject.query.filter_by(department_id=dept_code)
-    if year_num:
-        subject_query = subject_query.filter_by(year=year_num)
+    # Central Science Laboratories (Chemistry UG-CY-1..6 and Physics UG-PH-1..6)
+    central_labs = Laboratory.query.filter(Laboratory.department_id.in_(['CY', 'PH'])).all()
+    if sem_num in [1, 2] or year_num == 1 or not (sem_num or year_num):
+        existing_lab_ids = {l.id for l in laboratories}
+        for cl in central_labs:
+            if cl.id not in existing_lab_ids:
+                laboratories.append(cl)
+
+    subject_query = Subject.query
+    if dept_code:
+        subject_query = subject_query.filter_by(department_id=dept_code)
+    if sem_num:
+        subject_query = subject_query.filter_by(semester=sem_num)
     subjects = subject_query.all()
 
+    # Foundation professors for 1st & 2nd sem courses (Science: Physics/Chemistry, MACS: Maths, HSSM, CS: CSE/IT)
+    foundation_depts = ['PH', 'CY', 'HSSM', 'MACS', 'CSE', 'IT']
+    foundation_profs = Professor.query.filter(Professor.department_id.in_(foundation_depts)).all()
+    all_profs = Professor.query.all()
+
     return jsonify({
-        'departments': [d.to_dict() for d in departments],
+        'departments': dept_list,
         'professors': [p.to_dict() for p in professors],
+        'foundationProfessors': [p.to_dict() for p in foundation_profs],
+        'allProfessors': [p.to_dict() for p in all_profs],
         'classrooms': [c.to_dict() for c in classrooms],
         'laboratories': [l.to_dict() for l in laboratories],
+        'centralLaboratories': [l.to_dict() for l in central_labs],
         'subjects': [s.to_dict() for s in subjects],
         'years': [1, 2, 3, 4],
+        'semesters': [1, 2, 3, 4, 5, 6, 7, 8],
         'sections': ['A', 'B', 'C', 'D'],
         'workingDays': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
         'timeSlots': [
@@ -91,37 +124,84 @@ def generate_drafts(current_user):
     """
     data = request.get_json() or {}
     department = data.get('department', current_user.department or 'IT')
+    year = data.get('year')
+    semester = data.get('semester')
+    if semester and not year:
+        year = (int(semester) + 1) // 2
+    section = data.get('section')
     sections_count = data.get('sectionsCount', 2)
+    selected_subjects = data.get('selectedSubjects', [])
+    selected_subjects_by_year = data.get('selectedSubjectsByYear')
+    subject_settings = data.get('subjectSettings', {})
+    sections_per_year = data.get('sectionsPerYear')
+    selected_classrooms = data.get('selectedClassrooms')
+    selected_labs = data.get('selectedLabs')
+    selected_classroom_id = data.get('selectedClassroomId') or data.get('selectedClassroom')
+    section_classrooms = data.get('sectionClassrooms', {})
 
     engine = TimetableConstraintEngine(department=department)
-    year_configs = {
-        y: {'sections': sections_count} for y in [1, 2, 3, 4]
-    }
-    drafts = engine.generate_department_drafts(year_configs)
 
-    if not drafts:
+    if (year or semester) and section:
+        draft = engine.generate_single_draft(
+            year=year,
+            semester=semester,
+            section=section,
+            selected_subjects=selected_subjects,
+            subject_settings=subject_settings,
+            selected_classrooms=selected_classrooms,
+            selected_labs=selected_labs,
+            selected_classroom_id=selected_classroom_id
+        )
+        drafts = [draft] if draft else []
+    else:
+        if sections_per_year:
+            year_configs = {int(y): {'sections': int(s)} for y, s in sections_per_year.items()}
+        else:
+            year_configs = {y: {'sections': sections_count} for y in [1, 2, 3, 4]}
+
+        subjs_by_yr = None
+        if selected_subjects_by_year:
+            subjs_by_yr = {int(y): s_list for y, s_list in selected_subjects_by_year.items()}
+
+        drafts = engine.generate_department_drafts(
+            year_configs=year_configs,
+            classrooms=selected_classrooms,
+            selected_subjects_by_year=subjs_by_yr,
+            subject_settings=subject_settings,
+            selected_labs=selected_labs,
+            section_classrooms=section_classrooms
+        )
+
+    infeasible_drafts = [d for d in drafts if not d.get('isFeasible', True)]
+    if not drafts or len(infeasible_drafts) > 0:
+        unplaced_all = []
+        for d in infeasible_drafts:
+            unplaced_all.extend(d.get('unplacedSessions', []))
         log = LogFile(
             user_id=current_user.user_id,
             action='GENERATION_FAILED_INFEASIBLE',
             status_code=422,
-            message=f"Constraint solver could not find a zero-overlap schedule for department {department}",
+            message=f"Constraint solver could not find zero-overlap schedule for {department}",
             error_code='INFEASIBLE_CONSTRAINTS'
         )
         db.session.add(log)
         db.session.commit()
         return jsonify({
             'error': 'Generation Aborted: Mathematically impossible to achieve zero-overlapping with current constraints.',
-            'isFeasible': False
+            'isFeasible': False,
+            'unplaced': unplaced_all
         }), 422
 
     # Save generated draft schedules into D3: timetables database
     saved_timetables = []
     for d in drafts:
         tt_id = d.get('id') or f"tt_{department}_{d['year']}_{d['section']}_{uuid.uuid4().hex[:6]}"
+        sem_val = d.get('semester') or ((d['year'] * 2) - 1)
         existing = db.session.get(Timetable, tt_id)
         if existing:
             existing.grid_data = d.get('grid', {})
             existing.status = 'DRAFT'
+            existing.semester = sem_val
             existing.assigned_classroom = d.get('assignedClassroom')
             existing.assigned_labs = d.get('assignedLabs', [])
             saved_timetables.append(existing)
@@ -130,6 +210,7 @@ def generate_drafts(current_user):
                 id=tt_id,
                 department_id=department,
                 year=d['year'],
+                semester=sem_val,
                 section=d['section'],
                 status='DRAFT',
                 assigned_classroom=d.get('assignedClassroom'),

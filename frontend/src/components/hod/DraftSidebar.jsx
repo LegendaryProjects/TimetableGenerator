@@ -6,7 +6,7 @@ import { FolderKanban, CheckCircle2, CheckCheck, Trash2, Undo2, Sparkles, Check 
 export default function DraftSidebar() {
   const {
     timetables, activeDraftId, setActiveDraftId, selectedDepartment,
-    setSelectedYear, setSelectedSection, approveTimetable, disapproveTimetable,
+    setSelectedSemester, setSelectedYear, setSelectedSection, approveTimetable, disapproveTimetable,
     approveAllDrafts, discardDraft
   } = useTimetable();
   const { isDark } = useTheme();
@@ -74,7 +74,12 @@ export default function DraftSidebar() {
           return (
             <div
               key={tt.id}
-              onClick={() => { setActiveDraftId(tt.id); setSelectedYear(tt.year); setSelectedSection(tt.section); }}
+              onClick={() => { 
+                setActiveDraftId(tt.id); 
+                setSelectedSemester(tt.semester || ((tt.year * 2) - 1));
+                setSelectedYear(tt.year); 
+                setSelectedSection(tt.section); 
+              }}
               className={`p-3 rounded-xl border cursor-pointer transition-all ${
                 isActive 
                   ? isDark ? 'border-blue-500 bg-blue-950/20 ring-1 ring-blue-500/40' : 'border-blue-400 bg-blue-50/60'
@@ -88,11 +93,11 @@ export default function DraftSidebar() {
                       ? isDark ? 'bg-blue-950/60 text-blue-300 border-blue-800/40' : 'bg-blue-50 text-blue-700 border-blue-200'
                       : isDark ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/40' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                   }`}>
-                    {tt.year}
+                    S{tt.semester || ((tt.year * 2) - 1)}
                   </div>
                   <div>
                     <div className={`text-xs font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                      Year {tt.year} • Sec {tt.section}
+                      Sem {tt.semester || ((tt.year * 2) - 1)} • Sec {tt.section}
                     </div>
                     <div className="text-[10px] text-slate-500 font-medium">
                       {isDraft ? 'Draft Schedule' : 'Published Active'}

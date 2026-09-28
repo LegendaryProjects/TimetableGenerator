@@ -1,8 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { DEPARTMENTS, YEARS, SECTIONS, PROFESSORS } from '../../data/mockAcademicData';
+import { api } from '../../services/api';
 import { X, ShieldCheck, User, Lock, Mail, ArrowRight, GraduationCap, Briefcase } from 'lucide-react';
+
+const SEMESTERS = [
+  { id: '1', label: 'Sem 1', value: 1 },
+  { id: '2', label: 'Sem 2', value: 2 },
+  { id: '3', label: 'Sem 3', value: 3 },
+  { id: '4', label: 'Sem 4', value: 4 },
+  { id: '5', label: 'Sem 5', value: 5 },
+  { id: '6', label: 'Sem 6', value: 6 },
+  { id: '7', label: 'Sem 7', value: 7 },
+  { id: '8', label: 'Sem 8', value: 8 }
+];
+
+const SECTIONS = ['A', 'B', 'C', 'D'];
 
 export default function AuthModal() {
   const {
@@ -14,39 +27,77 @@ export default function AuthModal() {
   // Login Portal Type: 'HOD' | 'FACULTY' | 'STUDENT'
   const [activePortal, setActivePortal] = useState('HOD');
 
+  // Dynamic Departments and Faculty
+  const [departments, setDepartments] = useState([]);
+  const [departmentalFaculty, setDepartmentalFaculty] = useState([]);
+
   // HoD Login State
-  const [selectedHodId, setSelectedHodId] = useState(departmentHods[0]?.id || 'hod_it');
+  const [selectedHodId, setSelectedHodId] = useState(departmentHods[0]?.id || '');
 
   // Faculty Login State (Cascading Dropdowns: Department -> Faculty)
   const [facultyDept, setFacultyDept] = useState('IT');
-  const [selectedProfEmail, setSelectedProfEmail] = useState(() => {
-    const itProfs = PROFESSORS.filter(p => p.department === 'IT');
-    return itProfs[0]?.email || 'geethav@nitk.edu.in';
-  });
+  const [selectedProfEmail, setSelectedProfEmail] = useState('');
 
   // Student / Direct Login State
-  const [email, setEmail] = useState('student.it@nitk.edu.in');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   // Sign-Up State
   const [name, setName] = useState('');
   const [department, setDepartment] = useState('IT');
-  const [year, setYear] = useState('3');
+  const [semester, setSemester] = useState('5');
   const [section, setSection] = useState('A');
   const [signupRole, setSignupRole] = useState('STUDENT'); // 'HOD' | 'FACULTY' | 'STUDENT'
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    async function loadDepts() {
+      try {
+        const res = await api.getOptions();
+        if (res?.departments && res.departments.length > 0) {
+          setDepartments(res.departments);
+          if (!facultyDept) setFacultyDept(res.departments[0].id);
+        }
+      } catch (err) {
+        console.error('Failed to load departments:', err);
+      }
+    }
+    loadDepts();
+  }, []);
+
+  useEffect(() => {
+    if (departmentHods && departmentHods.length > 0 && !selectedHodId) {
+      setSelectedHodId(departmentHods[0].id);
+    }
+  }, [departmentHods, selectedHodId]);
+
+  useEffect(() => {
+    async function loadFaculty() {
+      if (!facultyDept) return;
+      try {
+        const res = await api.getOptions(facultyDept);
+        if (res?.professors) {
+          setDepartmentalFaculty(res.professors);
+          if (res.professors.length > 0) {
+            setSelectedProfEmail(res.professors[0].email);
+          } else {
+            setSelectedProfEmail('');
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load faculty:', err);
+      }
+    }
+    loadFaculty();
+  }, [facultyDept]);
+
   if (!authModalOpen) return null;
 
   // Handle Faculty Department Change to update selected professor
   const handleFacultyDeptChange = (dept) => {
     setFacultyDept(dept);
-    const profs = PROFESSORS.filter(p => p.department === dept);
-    if (profs.length > 0) {
-      setSelectedProfEmail(profs[0].email);
-    }
   };
 
   const handleLogin = async (e) => {
@@ -83,6 +134,7 @@ export default function AuthModal() {
         await signup({
           name: name.trim(),
           department,
+          semester: 5,
           year: 3,
           section: 'A',
           email: email.trim(),
@@ -93,10 +145,12 @@ export default function AuthModal() {
       } else {
         if (!name.trim()) throw new Error('Please enter your full name.');
         if (!email.trim()) throw new Error('Please enter your email address.');
+        const semNum = Number(semester);
         await signup({
           name: name.trim(),
           department,
-          year: Number(year),
+          semester: semNum,
+          year: Math.ceil(semNum / 2),
           section: section || 'A',
           email: email.trim(),
           password,
@@ -238,7 +292,7 @@ export default function AuthModal() {
                         isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
                       }`}
                     >
-                      {DEPARTMENTS.map(d => (
+                      {departments.map(d => (
                         <option key={d.id} value={d.id}>Dept. of {d.name} ({d.code})</option>
                       ))}
                     </select>
@@ -255,7 +309,7 @@ export default function AuthModal() {
                         isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
                       }`}
                     >
-                      {PROFESSORS.filter(p => p.department === facultyDept).map(p => (
+                      {departmentalFaculty.map(p => (
                         <option key={p.email} value={p.email}>
                           {p.name} ({p.designation})
                         </option>
@@ -372,18 +426,18 @@ export default function AuthModal() {
                         className={`w-full px-2.5 py-2 border rounded-xl text-sm font-bold focus:outline-none ${
                           isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
                         }`}>
-                        {DEPARTMENTS.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                        {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                       </select>
                     </div>
                     {signupRole === 'STUDENT' && (
                       <>
                         <div className="w-24">
-                          <label className={`block text-xs font-black uppercase tracking-wider mb-1 ${isDark ? 'text-cyan-400' : 'text-blue-800'}`}>Year</label>
-                          <select value={year} onChange={e => setYear(e.target.value)}
+                          <label className={`block text-xs font-black uppercase tracking-wider mb-1 ${isDark ? 'text-cyan-400' : 'text-blue-800'}`}>Sem</label>
+                          <select value={semester} onChange={e => setSemester(e.target.value)}
                             className={`w-full px-2.5 py-2 border rounded-xl text-sm font-bold focus:outline-none ${
                               isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
                             }`}>
-                            {YEARS.map(y => <option key={y.id} value={y.value}>{y.label}</option>)}
+                            {SEMESTERS.map(s => <option key={s.id} value={s.value}>{s.label}</option>)}
                           </select>
                         </div>
                         <div className="w-20">

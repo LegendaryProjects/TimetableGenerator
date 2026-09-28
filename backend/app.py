@@ -6,8 +6,6 @@ Compliant with RESTful architecture, JWT RBAC, SQLAlchemy ORM, and modular routi
 from flask import Flask, jsonify
 from flask_cors import CORS
 from backend.database import db, init_db
-from backend.models import Department
-from backend.seed_data import seed_database
 from backend.modules.user_auth.auth_routes import auth_bp
 from backend.modules.capture_and_schedule.schedule_routes import schedule_bp
 from backend.modules.review_and_approve.review_routes import review_bp
@@ -44,11 +42,9 @@ def create_app():
     def internal_error(error):
         return jsonify({'error': 'Internal server error'}), 500
 
-    # Auto-create tables & seed if empty
+    # Auto-create tables
     with app.app_context():
         db.create_all()
-        if Department.query.count() == 0:
-            seed_database()
 
     return app
 

@@ -55,15 +55,19 @@ export const api = {
     return data;
   },
 
-  async register({ email, password, name, role = 'VIEWER', department = 'IT', year = 3, userType = 'Student' }) {
+  async register({ email, password, name, role = 'VIEWER', department = 'IT', year = 3, semester = 5, section = 'A', userType = 'Student' }) {
     const data = await request('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ email, password, name, role, department, year, userType })
+      body: JSON.stringify({ email, password, name, role, department, year, semester, section, userType })
     });
     if (data.token) {
       localStorage.setItem('nitk_token', data.token);
     }
     return data;
+  },
+
+  async getHods() {
+    return request('/auth/hods');
   },
 
   async getCurrentUser() {
@@ -75,10 +79,11 @@ export const api = {
   },
 
   // --- Schedule Data & Options ---
-  async getOptions(department = 'IT', year = null) {
+  async getOptions(department = null, year = null, semester = null) {
     const params = new URLSearchParams();
     if (department) params.append('department', department);
-    if (year) params.append('year', year);
+    if (semester) params.append('semester', semester);
+    else if (year) params.append('year', year);
     return request(`/schedule/options?${params.toString()}`);
   },
 
@@ -92,15 +97,10 @@ export const api = {
     return request(`/schedule/timetables?${params.toString()}`);
   },
 
-  async generateDrafts({ department = 'IT', sectionsCount = 2, selectedSubjects = [], subjectSettings = {} }) {
+  async generateDrafts(params = {}) {
     return request('/schedule/generate', {
       method: 'POST',
-      body: JSON.stringify({
-        department,
-        sectionsCount,
-        selectedSubjects,
-        subjectSettings
-      })
+      body: JSON.stringify(params)
     });
   },
 

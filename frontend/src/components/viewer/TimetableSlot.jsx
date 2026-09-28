@@ -14,12 +14,19 @@ export default function TimetableSlot({
 }) {
   const { isDark } = useTheme();
 
+  const slotId = typeof slotInfo === 'object' && slotInfo !== null ? slotInfo.id : slotInfo;
+  const isPeriod1 = slotId === 1 || slotId === '1';
+
   if (!slot) {
     return (
       <div
-        onClick={isInvalidTarget ? undefined : onClick}
+        onClick={isInvalidTarget || isPeriod1 ? undefined : onClick}
         className={`min-h-[94px] h-full w-full rounded-xl border flex flex-col items-center justify-center text-xs font-medium transition-colors select-none ${
-          isInteractive
+          isPeriod1
+            ? isDark
+              ? 'border-slate-800/80 bg-slate-900/40 text-slate-500 cursor-not-allowed'
+              : 'border-slate-200/80 bg-slate-100/50 text-slate-400 cursor-not-allowed'
+            : isInteractive
             ? isInvalidTarget
               ? 'border-rose-500/80 bg-rose-950/25 text-rose-400 cursor-not-allowed ring-1 ring-rose-500/40'
               : isSwapTarget
@@ -29,12 +36,16 @@ export default function TimetableSlot({
                 : 'border-dashed border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 cursor-pointer text-slate-400 hover:text-blue-600'
             : isDark ? 'border-dashed border-slate-800/60 bg-slate-900/20 text-slate-600' : 'border-dashed border-slate-100 bg-slate-50/40 text-slate-300'
         }`}
-        title={isInvalidTarget ? 'Cannot swap here: conflict detected' : undefined}
+        title={isPeriod1 ? 'Institutional Policy: Classes from 08:00 - 09:00 AM are prohibited' : isInvalidTarget ? 'Cannot swap here: conflict detected' : undefined}
       >
         <span className={`text-xs tracking-wide font-mono ${
-          isInvalidTarget ? 'text-rose-400' : isSwapTarget ? 'text-emerald-400 font-semibold' : ''
+          isPeriod1 ? 'text-slate-500 font-medium text-[11px]' : isInvalidTarget ? 'text-rose-400' : isSwapTarget ? 'text-emerald-400 font-semibold' : ''
         }`}>
-          {isInteractive ? (isInvalidTarget ? 'Blocked' : isSwapTarget ? 'Drop Slot' : 'Available') : '—'}
+          {isPeriod1
+            ? 'No Classes'
+            : isInteractive
+            ? (isInvalidTarget ? 'Blocked' : isSwapTarget ? 'Drop Slot' : 'Available')
+            : '—'}
         </span>
       </div>
     );
@@ -75,6 +86,13 @@ export default function TimetableSlot({
         }`}>
           {slot.subjectCode}
         </span>
+        {isLab && slot.roomName && (
+          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ml-1 shrink-0 ${
+            isDark ? 'bg-emerald-950/70 text-emerald-300 border-emerald-800/50' : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+          }`}>
+            {slot.roomName}
+          </span>
+        )}
       </div>
 
       {/* Course Name */}

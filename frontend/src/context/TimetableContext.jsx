@@ -1,60 +1,128 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { api } from '../services/api';
-import { 
-  INITIAL_TIMETABLES, 
-  generateScheduleWithGlobalCSP,
-  createGlobalOccupancyTracker,
-  DEPARTMENT_CLASSROOMS,
-  DEPARTMENT_LABS,
-  SUBJECTS_BY_DEPT_YEAR, 
-  PROFESSORS, 
-  DAYS, 
-  TIME_SLOTS 
-} from '../data/mockAcademicData';
 import { useAuth } from './AuthContext';
 
 const TimetableContext = createContext(null);
+
+const DEFAULT_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+const DEFAULT_TIME_SLOTS = [
+  { id: 1, time: '08:00 - 08:45', label: 'Period 1' },
+  { id: 2, time: '09:00 - 09:45', label: 'Period 2' },
+  { id: 3, time: '10:00 - 10:45', label: 'Period 3' },
+  { id: 4, time: '11:00 - 11:45', label: 'Period 4' },
+  { id: 'lunch', time: '11:45 - 13:00', label: 'Lunch Break', isBreak: true },
+  { id: 5, time: '13:00 - 13:45', label: 'Period 5' },
+  { id: 6, time: '14:00 - 14:45', label: 'Period 6' },
+  { id: 7, time: '15:00 - 15:45', label: 'Period 7' },
+  { id: 8, time: '16:00 - 16:45', label: 'Period 8' },
+  { id: 9, time: '17:00 - 17:45', label: 'Period 9' },
+  { id: 10, time: '18:00 - 18:45', label: 'Period 10' }
+];
+
+// Policy: Institutional ban on scheduling classes from 8:00 - 9:00 AM (Period 1)
+const stripPeriod1FromTimetable = (tt) => {
+  if (!tt || !tt.grid) return tt;
+  let hasPeriod1 = false;
+  const newGrid = {};
+  for (const day of Object.keys(tt.grid)) {
+    newGrid[day] = { ...tt.grid[day] };
+    if (newGrid[day][1] || newGrid[day]['1']) {
+      hasPeriod1 = true;
+      delete newGrid[day][1];
+      delete newGrid[day]['1'];
+    }
+  }
+  return hasPeriod1 ? { ...tt, grid: newGrid } : tt;
+};
 
 export function TimetableProvider({ children }) {
   const { currentUser, isHod } = useAuth();
 
   const [timetables, setTimetables] = useState(() => {
-    const saved = localStorage.getItem('nitk_timetables_v12');
+    const saved = localStorage.getItem('nitk_timetables_v14') || localStorage.getItem('nitk_timetables_v13');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        return Array.isArray(parsed) ? parsed.map(stripPeriod1FromTimetable) : [];
       } catch (e) {
         console.error('Error parsing stored timetables:', e);
       }
     }
-    return INITIAL_TIMETABLES;
+    return [];
   });
 
   const [selectedDepartment, setSelectedDepartment] = useState(currentUser?.department || 'IT');
+  const [selectedSemester, setSelectedSemester] = useState(currentUser?.semester || 5);
   const [selectedYear, setSelectedYear] = useState(3);
   const [selectedSection, setSelectedSection] = useState('A');
-  const [selectedFacultyId, setSelectedFacultyId] = useState('p1');
+  const [selectedFacultyId, setSelectedFacultyId] = useState('');
   const [viewMode, setViewMode] = useState('student');
   
+  const [departments, setDepartments] = useState([]);
+  const [professors, setProfessors] = useState([]);
+  const [foundationProfessors, setFoundationProfessors] = useState([]);
+  const [allProfessors, setAllProfessors] = useState([]);
+  const [classrooms, setClassrooms] = useState([]);
+  const [laboratories, setLaboratories] = useState([]);
+  const [subjects, setSubjects] = useState([]);
+  const [years, setYears] = useState([1, 2, 3, 4]);
+  const [semesters, setSemesters] = useState([1, 2, 3, 4, 5, 6, 7, 8]);
+  const [sections, setSections] = useState(['A', 'B', 'C', 'D']);
+  const [workingDays, setWorkingDays] = useState(DEFAULT_DAYS);
+  const [timeSlots, setTimeSlots] = useState(DEFAULT_TIME_SLOTS);
+
   const [isEditingHodStudio, setIsEditingHodStudio] = useState(false);
   const [activeDraftId, setActiveDraftId] = useState(null);
   const [lastConflictAlert, setLastConflictAlert] = useState(null);
   const [generationError, setGenerationError] = useState(null);
   const [notification, setNotification] = useState(null);
 
-  // Sync with live Backend Database
+  // Fetch academic constraints and entity options from Backend Database
+  useEffect(() => {
+    async function fetchOptions() {
+      try {
+        // Fetch all department courses across all years & semesters
+        const res = await api.getOptions(selectedDepartment);
+        if (res) {
+          if (res.departments && res.departments.length > 0) setDepartments(res.departments);
+          if (res.professors) {
+            setProfessors(res.professors);
+            if (res.professors.length > 0 && !selectedFacultyId) {
+              setSelectedFacultyId(res.professors[0].id);
+            }
+          }
+          if (res.foundationProfessors) setFoundationProfessors(res.foundationProfessors);
+          if (res.allProfessors) setAllProfessors(res.allProfessors);
+          if (res.classrooms) setClassrooms(res.classrooms);
+          if (res.laboratories) setLaboratories(res.laboratories);
+          if (res.subjects) setSubjects(res.subjects);
+          if (res.years) setYears(res.years);
+          if (res.semesters) setSemesters(res.semesters);
+          if (res.sections) setSections(res.sections);
+          if (res.workingDays) setWorkingDays(res.workingDays);
+          if (res.timeSlots) setTimeSlots(res.timeSlots);
+        }
+      } catch (err) {
+        console.error('Failed to load academic options from database:', err);
+      }
+    }
+    fetchOptions();
+  }, [selectedDepartment]);
+
+  // Sync timetables from live backend database
   useEffect(() => {
     async function fetchFromBackend() {
       try {
         const res = await api.getTimetables({ department: selectedDepartment });
-        if (res.timetables && res.timetables.length > 0) {
+        if (res.timetables) {
+          const sanitized = res.timetables.map(stripPeriod1FromTimetable);
           setTimetables(prev => {
             const otherDepts = prev.filter(t => t.department !== selectedDepartment);
-            return [...otherDepts, ...res.timetables];
+            return [...otherDepts, ...sanitized];
           });
         }
       } catch (e) {
-        // Backend offline or local mode
+        console.error('Failed to load timetables from backend:', e);
       }
     }
     fetchFromBackend();
@@ -65,14 +133,20 @@ export function TimetableProvider({ children }) {
       setSelectedDepartment(currentUser.department);
     }
     if (currentUser?.userType === 'Student') {
-      if (currentUser.year) setSelectedYear(Number(currentUser.year));
+      if (currentUser.semester) {
+        setSelectedSemester(Number(currentUser.semester));
+        setSelectedYear(Math.ceil(Number(currentUser.semester) / 2));
+      } else if (currentUser.year) {
+        setSelectedYear(Number(currentUser.year));
+        setSelectedSemester(Number(currentUser.year) * 2 - 1);
+      }
       if (currentUser.section) setSelectedSection(currentUser.section);
       setViewMode('student');
     }
   }, [currentUser]);
 
   useEffect(() => {
-    localStorage.setItem('nitk_timetables_v12', JSON.stringify(timetables));
+    localStorage.setItem('nitk_timetables_v14', JSON.stringify(timetables));
   }, [timetables]);
 
   const notify = (message, type = 'success') => {
@@ -90,8 +164,8 @@ export function TimetableProvider({ children }) {
     const roomClashes = [];
     const deptTTs = timetables.filter(t => t.department === selectedDepartment);
 
-    DAYS.forEach(day => {
-      TIME_SLOTS.forEach(slot => {
+    workingDays.forEach(day => {
+      timeSlots.forEach(slot => {
         if (slot.isBreak) return;
         
         const facultyMap = {};
@@ -151,21 +225,23 @@ export function TimetableProvider({ children }) {
       totalClashes: facultyClashes.length + roomClashes.length,
       isZeroOverlap: facultyClashes.length === 0 && roomClashes.length === 0
     };
-  }, [timetables, selectedDepartment]);
+  }, [timetables, selectedDepartment, workingDays, timeSlots]);
 
   /**
-   * Builds composite Faculty Timetable when in Faculty View Mode
+   * Composite Faculty Timetable when in Faculty View Mode
    */
   const facultyCompositeTimetable = useMemo(() => {
     if (viewMode !== 'faculty') return null;
 
-    const faculty = PROFESSORS.find(p => p.id === selectedFacultyId) || PROFESSORS.find(p => p.department === selectedDepartment) || PROFESSORS[0];
+    const faculty = professors.find(p => p.id === selectedFacultyId) || 
+                    professors.find(p => p.department === selectedDepartment) || 
+                    professors[0];
     if (!faculty) return null;
 
     const grid = {};
-    DAYS.forEach(day => {
+    workingDays.forEach(day => {
       grid[day] = {};
-      TIME_SLOTS.forEach(slot => {
+      timeSlots.forEach(slot => {
         if (slot.isBreak) return;
         grid[day][slot.id] = null;
       });
@@ -174,14 +250,14 @@ export function TimetableProvider({ children }) {
     const deptTTs = timetables.filter(t => t.department === selectedDepartment);
 
     deptTTs.forEach(tt => {
-      DAYS.forEach(day => {
-        TIME_SLOTS.forEach(slot => {
+      workingDays.forEach(day => {
+        timeSlots.forEach(slot => {
           if (slot.isBreak) return;
           const cell = tt.grid?.[day]?.[slot.id];
           if (cell && cell.facultyId === faculty.id) {
             grid[day][slot.id] = {
               ...cell,
-              assignedClassroom: `Year ${tt.year} Sec ${tt.section} (${cell.roomName || cell.roomId})`
+              assignedClassroom: `Sem ${tt.semester || tt.year} Sec ${tt.section} (${cell.roomName || cell.roomId})`
             };
           }
         });
@@ -201,11 +277,16 @@ export function TimetableProvider({ children }) {
       isFeasible: true,
       grid
     };
-  }, [viewMode, selectedFacultyId, timetables, selectedDepartment]);
+  }, [viewMode, selectedFacultyId, timetables, selectedDepartment, professors, workingDays, timeSlots]);
 
   const currentViewerTimetable = viewMode === 'faculty'
     ? facultyCompositeTimetable
     : timetables.find(
+        t => t.department === selectedDepartment && 
+             (t.semester ? Number(t.semester) === Number(selectedSemester) : t.year === Number(selectedYear)) && 
+             t.section === selectedSection &&
+             t.status === 'APPROVED'
+      ) || timetables.find(
         t => t.department === selectedDepartment && 
              t.year === Number(selectedYear) && 
              t.section === selectedSection &&
@@ -218,197 +299,119 @@ export function TimetableProvider({ children }) {
 
   const currentHodTimetable = activeDraftId 
     ? timetables.find(t => t.id === activeDraftId)
-    : draftTimetables[0] || timetables.find(t => t.department === selectedDepartment && t.year === Number(selectedYear) && t.section === selectedSection) || timetables.find(t => t.department === selectedDepartment) || null;
-
-  const buildTrackerFromTimetables = (ttList, excludeId = null) => {
-    const tracker = createGlobalOccupancyTracker();
-    ttList.forEach(tt => {
-      if (excludeId && tt.id === excludeId) return;
-      DAYS.forEach(day => {
-        TIME_SLOTS.forEach(slot => {
-          if (slot.isBreak) return;
-          const cell = tt.grid?.[day]?.[slot.id];
-          if (cell) {
-            if (cell.facultyId) tracker[day][slot.id].facultyIds.add(cell.facultyId);
-            if (cell.roomId) tracker[day][slot.id].roomIds.add(cell.roomId);
-          }
-        });
-      });
-    });
-    return tracker;
-  };
+    : draftTimetables.find(t => (t.semester ? Number(t.semester) === Number(selectedSemester) : t.year === Number(selectedYear)) && t.section === selectedSection)
+      || draftTimetables[0] 
+      || timetables.find(t => t.department === selectedDepartment && (t.semester ? Number(t.semester) === Number(selectedSemester) : t.year === Number(selectedYear)) && t.section === selectedSection) 
+      || timetables.find(t => t.department === selectedDepartment) 
+      || null;
 
   /**
-   * Generate Draft for ONLY ONE specific section.
-   * If zero-overlapping is impossible, DOES NOT generate or save any timetable!
+   * Generate Draft for a single section via Backend Constraint Solver
    */
-  const generateSingleSectionDraft = ({
+  const generateSingleSectionDraft = async ({
     department = selectedDepartment,
-    year = 3,
+    year,
+    semester = selectedSemester,
     section = 'A',
     selectedClassrooms = [],
     selectedLabs = [],
-    labsPerSection = 2,
     selectedSubjects = [],
-    subjectSettings = {}
+    subjectSettings = {},
+    selectedClassroomId = null
   }) => {
-    const activeClassrooms = selectedClassrooms.length > 0
-      ? selectedClassrooms
-      : (DEPARTMENT_CLASSROOMS[department] || DEPARTMENT_CLASSROOMS['IT']).slice(0, 2);
+    try {
+      clearGenerationError();
+      const semNum = Number(semester || selectedSemester || 5);
+      const yrNum = year ? Number(year) : Math.ceil(semNum / 2);
+      const res = await api.generateDrafts({
+        department,
+        year: yrNum,
+        semester: semNum,
+        section,
+        selectedClassrooms,
+        selectedClassroomId,
+        selectedLabs,
+        selectedSubjects,
+        subjectSettings
+      });
 
-    const activeLabs = selectedLabs.length > 0
-      ? selectedLabs
-      : (DEPARTMENT_LABS[department] || DEPARTMENT_LABS['IT']).slice(0, 2);
-
-    const existingDeptTimetables = timetables.filter(
-      t => t.department === department && !(t.year === Number(year) && t.section === section)
-    );
-    const globalOccupancy = buildTrackerFromTimetables(existingDeptTimetables);
-
-    const singleDraft = generateScheduleWithGlobalCSP({
-      department,
-      year: Number(year),
-      section,
-      status: 'DRAFT',
-      selectedSubjects,
-      subjectSettings,
-      selectedClassrooms: activeClassrooms,
-      selectedLabs: activeLabs,
-      labsPerSection: Number(labsPerSection),
-      allocatedClassroom: activeClassrooms[0],
-      allocatedLabs: activeLabs.slice(0, labsPerSection),
-      globalOccupancy
-    });
-
-    // RULE: If zero-overlapping is impossible, DO NOT GENERATE AT ALL!
-    if (!singleDraft.isFeasible) {
+      if (res && res.drafts && res.drafts.length > 0) {
+        const newDrafts = res.drafts;
+        setTimetables(prev => {
+          const remaining = prev.filter(t => !(t.department === department && (t.semester ? Number(t.semester) === semNum : t.year === yrNum) && t.section === section));
+          return [...remaining, ...newDrafts];
+        });
+        setActiveDraftId(newDrafts[0].id);
+        setSelectedSemester(semNum);
+        setSelectedYear(yrNum);
+        setSelectedSection(section);
+        notify(`Successfully generated timetable for Semester ${semNum} (Sec ${section})!`, 'success');
+        return newDrafts[0];
+      }
+    } catch (err) {
       const errInfo = {
         title: 'Timetable Generation Aborted',
-        message: 'There is no possibility to achieve zero-overlapping with the current constraint inputs.',
-        unplaced: singleDraft.unplacedSessions,
+        message: err.message || 'Unable to generate schedule with current constraints.',
         department,
         year,
         section
       };
       setGenerationError(errInfo);
-      notify('⚠️ Generation Aborted: There is no possibility to achieve zero-overlapping with current constraints.', 'warning');
+      notify(`⚠️ ${err.message || 'Generation aborted'}`, 'warning');
       return null;
     }
-
-    // Otherwise, zero-overlap is verified: Save the draft
-    setGenerationError(null);
-    singleDraft.name = `Year ${year} - Section ${section}`;
-
-    setTimetables(prev => {
-      const remaining = prev.filter(t => !(t.department === department && t.year === Number(year) && t.section === section));
-      return [...remaining, singleDraft];
-    });
-
-    setActiveDraftId(singleDraft.id);
-    setSelectedYear(Number(year));
-    setSelectedSection(section);
-
-    notify(`Successfully generated 100% zero-overlap timetable for Year ${year} Sec ${section}!`, 'success');
-    return singleDraft;
   };
 
   /**
-   * Generate Draft Timetables for Entire Department.
-   * If zero-overlapping is impossible for ANY section, DOES NOT generate ANY timetable at all!
+   * Generate Draft Timetables for entire department via Backend Constraint Solver
    */
-  const generateDraftsForDepartment = ({ 
+  const generateDraftsForDepartment = async ({ 
     department = selectedDepartment,
-    selectedClassrooms = [],
-    selectedLabs = [],
-    labsPerSection = 2,
     sectionsPerYear = { 1: 2, 2: 2, 3: 2, 4: 2 },
     selectedSubjectsByYear = {},
-    subjectSettings = {}
+    subjectSettings = {},
+    selectedClassrooms = [],
+    selectedLabs = [],
+    sectionClassrooms = {}
   }) => {
-    const activeClassrooms = selectedClassrooms.length > 0
-      ? selectedClassrooms
-      : (DEPARTMENT_CLASSROOMS[department] || DEPARTMENT_CLASSROOMS['IT']);
+    try {
+      clearGenerationError();
+      const res = await api.generateDrafts({
+        department,
+        sectionsPerYear,
+        selectedSubjectsByYear,
+        subjectSettings,
+        selectedClassrooms,
+        selectedLabs,
+        sectionClassrooms
+      });
 
-    const activeLabs = selectedLabs.length > 0
-      ? selectedLabs
-      : (DEPARTMENT_LABS[department] || DEPARTMENT_LABS['IT']);
-
-    const globalOccupancy = createGlobalOccupancyTracker();
-    const candidateDrafts = [];
-    const allUnplacedSessions = [];
-    const sectionLetters = ['A', 'B', 'C', 'D'];
-
-    let globalCrIdx = 0;
-    let globalLabIdx = 0;
-
-    [1, 2, 3, 4].forEach(year => {
-      const numSec = sectionsPerYear[year] || 2;
-      const yearSelectedSubjs = selectedSubjectsByYear[year] || [];
-
-      for (let sIdx = 0; sIdx < numSec; sIdx++) {
-        const sec = sectionLetters[sIdx];
-        
-        const assignedClassroom = activeClassrooms[globalCrIdx % activeClassrooms.length];
-        globalCrIdx++;
-
-        const assignedLab1 = activeLabs[globalLabIdx % activeLabs.length];
-        const assignedLab2 = activeLabs[(globalLabIdx + 1) % activeLabs.length];
-        globalLabIdx += labsPerSection;
-
-        const draft = generateScheduleWithGlobalCSP({
-          department,
-          year,
-          section: sec,
-          status: 'DRAFT',
-          selectedSubjects: yearSelectedSubjs,
-          subjectSettings,
-          selectedClassrooms: activeClassrooms,
-          selectedLabs: activeLabs,
-          labsPerSection,
-          allocatedClassroom: assignedClassroom,
-          allocatedLabs: [assignedLab1, assignedLab2],
-          globalOccupancy
+      if (res && res.drafts && res.drafts.length > 0) {
+        const candidateDrafts = res.drafts;
+        setTimetables(prev => {
+          const remaining = prev.filter(t => t.department !== department);
+          return [...remaining, ...candidateDrafts];
         });
 
-        draft.name = `Year ${year} - Section ${sec}`;
-        if (!draft.isFeasible) {
-          allUnplacedSessions.push(...draft.unplacedSessions);
+        if (candidateDrafts.length > 0) {
+          setActiveDraftId(candidateDrafts[0].id);
+          setSelectedYear(candidateDrafts[0].year);
+          setSelectedSection(candidateDrafts[0].section);
         }
-        candidateDrafts.push(draft);
-      }
-    });
 
-    // RULE: If any session could not be placed with zero-overlap, DO NOT GENERATE AT ALL!
-    if (allUnplacedSessions.length > 0) {
+        notify(`Successfully formulated ${candidateDrafts.length} draft timetables for ${department}!`, 'success');
+        return candidateDrafts;
+      }
+    } catch (err) {
       const errInfo = {
         title: 'Department Timetables Generation Aborted',
-        message: 'There is no possibility to achieve zero-overlapping with the current constraint inputs.',
-        unplaced: allUnplacedSessions,
+        message: err.message || 'Unable to generate department schedules with current constraints.',
         department
       };
       setGenerationError(errInfo);
-      notify(
-        `⚠️ Generation Aborted: There is no possibility to achieve zero-overlapping for ${allUnplacedSessions.length} session(s).`,
-        'warning'
-      );
+      notify(`⚠️ ${err.message || 'Generation aborted'}`, 'warning');
       return null;
     }
-
-    // 100% Zero-Overlap Verified: Save all department drafts
-    setGenerationError(null);
-    setTimetables(prev => {
-      const remaining = prev.filter(t => t.department !== department);
-      return [...remaining, ...candidateDrafts];
-    });
-
-    if (candidateDrafts.length > 0) {
-      setActiveDraftId(candidateDrafts[0].id);
-      setSelectedYear(candidateDrafts[0].year);
-      setSelectedSection(candidateDrafts[0].section);
-    }
-
-    notify(`Successfully formulated ${candidateDrafts.length} zero-conflict draft timetables for ${department}!`, 'success');
-    return candidateDrafts;
   };
 
   const clearGenerationError = () => {
@@ -442,7 +445,7 @@ export function TimetableProvider({ children }) {
     return null;
   };
 
-  const swapSlots = (sourceTimetableId, source, targetTimetableId = null, target) => {
+  const swapSlots = async (sourceTimetableId, source, targetTimetableId = null, target) => {
     const actualTargetTimetableId = targetTimetableId || sourceTimetableId;
     let conflictWarning = null;
 
@@ -468,6 +471,17 @@ export function TimetableProvider({ children }) {
       setLastConflictAlert(conflictWarning);
       notify(conflictWarning, 'warning');
       return false;
+    }
+
+    try {
+      await api.swapSlots({
+        sourceTimetableId,
+        targetTimetableId: actualTargetTimetableId,
+        source,
+        target
+      });
+    } catch (e) {
+      console.error('Swap persistence error:', e);
     }
 
     setTimetables(prev => {
@@ -507,7 +521,7 @@ export function TimetableProvider({ children }) {
     try {
       await api.approveTimetable(timetableId);
     } catch (e) {
-      // Sync fallback
+      console.error('Error approving timetable:', e);
     }
 
     setTimetables(prev => {
@@ -564,7 +578,14 @@ export function TimetableProvider({ children }) {
 
   const discardDraft = deleteTimetable;
 
-  const approveAllDrafts = () => {
+  const approveAllDrafts = async () => {
+    const draftsToApprove = timetables.filter(t => t.department === selectedDepartment && t.status === 'DRAFT');
+    for (const d of draftsToApprove) {
+      try {
+        await api.approveTimetable(d.id);
+      } catch (e) {}
+    }
+
     setTimetables(prev => {
       return prev.map(t => {
         if (t.department === selectedDepartment && t.status === 'DRAFT') {
@@ -585,15 +606,38 @@ export function TimetableProvider({ children }) {
   return (
     <TimetableContext.Provider value={{
       timetables,
+      departments,
+      professors,
+      foundationProfessors,
+      allProfessors,
+      classrooms,
+      laboratories,
+      subjects,
+      years,
+      semesters,
+      sections,
+      workingDays,
+      timeSlots,
       selectedDepartment,
       setSelectedDepartment: (dept) => {
         setSelectedDepartment(dept);
-        setSelectedYear(1);
+        setSelectedSemester(5);
+        setSelectedYear(3);
         setSelectedSection('A');
         setActiveDraftId(null);
       },
+      selectedSemester,
+      setSelectedSemester: (sem) => {
+        const s = Number(sem);
+        setSelectedSemester(s);
+        setSelectedYear(Math.ceil(s / 2));
+      },
       selectedYear,
-      setSelectedYear,
+      setSelectedYear: (yr) => {
+        const y = Number(yr);
+        setSelectedYear(y);
+        setSelectedSemester((y * 2) - 1);
+      },
       selectedSection,
       setSelectedSection,
       selectedFacultyId,

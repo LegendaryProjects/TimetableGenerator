@@ -50,8 +50,8 @@ function MainAppContent() {
             <span>•</span>
             <span>Academic Timetable Generator</span>
           </div>
-          <div className="text-xs font-semibold text-slate-600 dark:text-zinc-300">
-            Made by Sankalp, Abhishek, Ravi
+          <div className="text-xs font-medium text-slate-600 dark:text-zinc-400">
+            © {new Date().getFullYear()} Sankalp, Abhishek, Ravi | All rights reserved.
           </div>
           <div className="text-zinc-400 text-[11px]">
             National Institute of Technology Karnataka, Surathkal • {deptDisplayName}

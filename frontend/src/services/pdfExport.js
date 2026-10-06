@@ -35,16 +35,30 @@ export async function exportNoticeBoardPdf(timetable, academicOptions = {}) {
     currentY += 2.0;
 
     // --- Institutional Title Box (3 BORDERED ROWS) ---
-    const deptFullName = timetable.departmentName || (
+    let deptFullName = timetable.departmentName || (
       academicOptions.departments?.find(d => d.id === timetable.department)?.name || timetable.department
     );
+
+    // Special case: in PDF export, show Department of Information Technology instead of Department of AI
+    const isAiDept = timetable.department === 'AI' ||
+      deptFullName === 'AI' ||
+      (typeof deptFullName === 'string' && (
+        deptFullName.toLowerCase().includes('artificial intelligence') ||
+        deptFullName.toLowerCase().includes('department of ai')
+      ));
+
+    if (isAiDept) {
+      deptFullName = 'Information Technology';
+    }
+
+    const deptCode = isAiDept ? 'IT' : (timetable.department || 'IT');
 
     const semNum = Number(timetable.semester || (timetable.year ? (timetable.year * 2 - 1) : 5));
     const romanNumerals = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
     const semRoman = romanNumerals[semNum] || String(semNum);
     const semSuffix = semNum === 1 ? 'st' : semNum === 2 ? 'nd' : semNum === 3 ? 'rd' : 'th';
     const semTerm = (semNum % 2 === 1) ? 'ODD' : 'EVEN';
-    const semStr = `${semRoman}${semSuffix} Semester B.Tech.(${timetable.department}) (Sec ${timetable.section || 'A'}) Time Table for ${semTerm} Semester of the Academic Year 2026 - 2027`;
+    const semStr = `${semRoman}${semSuffix} Semester B.Tech.(${deptCode}) (Sec ${timetable.section || 'A'}) Time Table for ${semTerm} Semester of the Academic Year 2026 - 2027`;
 
     doc.autoTable({
       head: [
@@ -399,7 +413,7 @@ export async function exportNoticeBoardPdf(timetable, academicOptions = {}) {
     doc.text('HoD', pageWidth - margin - 25, sigY, { align: 'center' });
 
     // Save File
-    const filename = `NITK_${timetable.department}_Sem${timetable.semester || timetable.year}_Sec${timetable.section}_Timetable.pdf`;
+    const filename = `NITK_${deptCode}_Sem${timetable.semester || timetable.year}_Sec${timetable.section}_Timetable.pdf`;
     doc.save(filename);
     return true;
   } catch (error) {

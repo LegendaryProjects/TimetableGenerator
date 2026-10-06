@@ -7,11 +7,31 @@ from flask import Blueprint, request, jsonify, current_app
 import jwt
 import datetime
 import bcrypt
+import re
 from functools import wraps
 from backend.database import db
-from backend.models import User, Department, LogFile
+from backend.models import User, Department, LogFile, Professor
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
+
+
+def validate_password_strength(password):
+    """
+    Enforces password complexity:
+    - Minimum 8 characters
+    - At least one letter (A-Z, a-z)
+    - At least one number (0-9)
+    - At least one special character
+    """
+    if not password or len(password) < 8:
+        return False, "Password must be at least 8 characters long."
+    if not re.search(r'[A-Za-z]', password):
+        return False, "Password must contain at least one letter."
+    if not re.search(r'\d', password):
+        return False, "Password must contain at least one number."
+    if not re.search(r'[^A-Za-z0-9]', password):
+        return False, "Password must contain at least one special character (!@#$%^&* etc.)."
+    return True, None
 
 
 def check_password(plain_password, hashed_password):
@@ -108,9 +128,14 @@ def register():
         semester = (year * 2) - 1
     section = data.get('section', 'A')
     user_type = data.get('userType', 'Student')
+    designation = data.get('designation', 'Assistant Professor')
 
     if not email or not password or not name:
         return jsonify({'error': 'Email, password, and name are required'}), 400
+
+    is_valid_pw, pw_err = validate_password_strength(password)
+    if not is_valid_pw:
+        return jsonify({'error': pw_err}), 400
 
     if User.query.filter_by(email=email).first():
         return jsonify({'error': 'A user with this email address already exists'}), 409
@@ -128,6 +153,32 @@ def register():
         user_type=user_type
     )
     db.session.add(new_user)
+    
+    # If a Faculty member registers, ensure they are registered in the professors table so they appear in dropdowns
+    if user_type.lower() == 'faculty' or role.upper() in ['FACULTY', 'PROFESSOR', 'HOD']:
+        existing_prof = Professor.query.filter(
+            (Professor.name.ilike(name)) & (Professor.department_id == department)
+        ).first()
+        if not existing_prof:
+            # Generate clean ID based on department and count
+            dept_lower = department.lower()
+            prof_count = Professor.query.filter_by(department_id=department).count() + 1
+            prof_id = f"{dept_lower}_p{prof_count:02d}"
+            # Ensure uniqueness
+            while Professor.query.get(prof_id):
+                prof_count += 1
+                prof_id = f"{dept_lower}_p{prof_count:02d}"
+
+            new_prof = Professor(
+                id=prof_id,
+                name=name,
+                department_id=department,
+                designation=designation
+            )
+            db.session.add(new_prof)
+        else:
+            if designation:
+                existing_prof.designation = designation
     
     # Audit log
     log = LogFile(
@@ -230,3 +281,71 @@ def get_current_user(current_user):
     return jsonify({
         'user': current_user.to_dict()
     }), 200
+
+
+@auth_bp.route('/forgot-password', methods=['POST'])
+def forgot_password():
+    """
+    Password Reset Endpoint
+    Updates the password for an existing student, faculty, or HoD user.
+    If the email belongs to a pre-seeded faculty member not yet in the users table,
+    initializes their user account with the new password.
+    """
+    data = request.get_json() or {}
+    email = data.get('email', '').strip().lower()
+    new_password = data.get('newPassword') or data.get('password', '')
+
+    if not email or not new_password:
+        return jsonify({'error': 'Email address and new password are required'}), 400
+
+    is_valid_pw, pw_err = validate_password_strength(new_password)
+    if not is_valid_pw:
+        return jsonify({'error': pw_err}), 400
+
+    user = User.query.filter_by(email=email).first()
+
+    if not user:
+        # Check if this email corresponds to a pre-seeded professor profile
+        matched_prof = None
+        all_profs = Professor.query.all()
+        for p in all_profs:
+            name_parts = p.name.replace('Dr.', '').replace('Prof.', '').strip().lower().split()
+            clean_name = '.'.join(name_parts[:2]) if len(name_parts) >= 2 else (name_parts[0] if name_parts else 'faculty')
+            prof_email = f"{clean_name}.{p.department_id.lower()}@nitk.edu.in"
+            if prof_email == email:
+                matched_prof = p
+                break
+
+        if matched_prof:
+            # Initialize their user account
+            user = User(
+                email=email,
+                password_hash=hash_password(new_password),
+                name=matched_prof.name,
+                role='VIEWER',
+                department=matched_prof.department_id,
+                year=3,
+                semester=5,
+                section='A',
+                user_type='Faculty'
+            )
+            db.session.add(user)
+        else:
+            return jsonify({'error': 'No institutional account found with this email address. Please check your email or create a new account.'}), 404
+    else:
+        user.password_hash = hash_password(new_password)
+
+    log = LogFile(
+        user_id=user.user_id if getattr(user, 'user_id', None) else None,
+        action='PASSWORD_RESET',
+        status_code=200,
+        message=f"Password updated successfully for {email}"
+    )
+    db.session.add(log)
+    db.session.commit()
+
+    return jsonify({
+        'message': 'Password has been reset successfully! You can now sign in with your new password.',
+        'email': email
+    }), 200
+

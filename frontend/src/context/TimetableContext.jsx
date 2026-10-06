@@ -58,6 +58,16 @@ export function TimetableProvider({ children }) {
   const [selectedFacultyId, setSelectedFacultyId] = useState('');
   const [viewMode, setViewMode] = useState('student');
   
+  const [semesterType, setSemesterType] = useState(() => {
+    const saved = localStorage.getItem('nitk_semester_type');
+    if (saved === 'odd' || saved === 'even') return saved;
+    return (currentUser?.semester && Number(currentUser.semester) % 2 === 0) ? 'even' : 'odd';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('nitk_semester_type', semesterType);
+  }, [semesterType]);
+
   const [departments, setDepartments] = useState([]);
   const [professors, setProfessors] = useState([]);
   const [foundationProfessors, setFoundationProfessors] = useState([]);
@@ -372,10 +382,12 @@ export function TimetableProvider({ children }) {
     subjectSettings = {},
     selectedClassrooms = [],
     selectedLabs = [],
-    sectionClassrooms = {}
+    sectionClassrooms = {},
+    semesterType: overrideSemType = null
   }) => {
     try {
       clearGenerationError();
+      const semType = overrideSemType || semesterType || 'odd';
       const res = await api.generateDrafts({
         department,
         sectionsPerYear,
@@ -383,7 +395,8 @@ export function TimetableProvider({ children }) {
         subjectSettings,
         selectedClassrooms,
         selectedLabs,
-        sectionClassrooms
+        sectionClassrooms,
+        semesterType: semType
       });
 
       if (res && res.drafts && res.drafts.length > 0) {
@@ -631,12 +644,27 @@ export function TimetableProvider({ children }) {
         const s = Number(sem);
         setSelectedSemester(s);
         setSelectedYear(Math.ceil(s / 2));
+        setSemesterType(s % 2 === 0 ? 'even' : 'odd');
       },
       selectedYear,
       setSelectedYear: (yr) => {
         const y = Number(yr);
         setSelectedYear(y);
-        setSelectedSemester((y * 2) - 1);
+        setSelectedSemester(semesterType === 'even' ? (y * 2) : ((y * 2) - 1));
+      },
+      semesterType,
+      setSemesterType: (type) => {
+        const t = (type === 'even') ? 'even' : 'odd';
+        setSemesterType(t);
+        setSelectedSemester(prev => {
+          const current = Number(prev) || 1;
+          if (t === 'odd' && current % 2 === 0) {
+            return Math.max(1, current - 1);
+          } else if (t === 'even' && current % 2 !== 0) {
+            return Math.min(8, current + 1);
+          }
+          return current;
+        });
       },
       selectedSection,
       setSelectedSection,

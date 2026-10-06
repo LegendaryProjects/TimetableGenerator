@@ -6,15 +6,18 @@ import {
   Building, BookOpen, Sparkles, RotateCcw, Zap, Check, AlertOctagon, X, FlaskConical
 } from 'lucide-react';
 
-const SEMESTERS = [
-  { id: '1', label: 'Sem 1', value: 1 },
-  { id: '2', label: 'Sem 2', value: 2 },
-  { id: '3', label: 'Sem 3', value: 3 },
-  { id: '4', label: 'Sem 4', value: 4 },
-  { id: '5', label: 'Sem 5', value: 5 },
-  { id: '6', label: 'Sem 6', value: 6 },
-  { id: '7', label: 'Sem 7', value: 7 },
-  { id: '8', label: 'Sem 8', value: 8 }
+const ODD_SEMESTERS = [
+  { id: '1', label: 'Sem 1', value: 1, year: 1 },
+  { id: '3', label: 'Sem 3', value: 3, year: 2 },
+  { id: '5', label: 'Sem 5', value: 5, year: 3 },
+  { id: '7', label: 'Sem 7', value: 7, year: 4 }
+];
+
+const EVEN_SEMESTERS = [
+  { id: '2', label: 'Sem 2', value: 2, year: 1 },
+  { id: '4', label: 'Sem 4', value: 4, year: 2 },
+  { id: '6', label: 'Sem 6', value: 6, year: 3 },
+  { id: '8', label: 'Sem 8', value: 8, year: 4 }
 ];
 
 const SECTIONS = ['A', 'B', 'C', 'D'];
@@ -38,7 +41,9 @@ export default function ConstraintForm({ onClose }) {
     selectedSemester,
     setSelectedSemester,
     selectedYear,
-    setSelectedYear
+    setSelectedYear,
+    semesterType,
+    setSemesterType
   } = useTimetable();
   const { isDark } = useTheme();
 
@@ -49,6 +54,22 @@ export default function ConstraintForm({ onClose }) {
   const [selectedLabs, setSelectedLabs] = useState([]);
   const [numSections, setNumSections] = useState(2);
   const [targetSection, setTargetSection] = useState('A');
+
+  const availableSemesters = semesterType === 'even' ? EVEN_SEMESTERS : ODD_SEMESTERS;
+
+  const handleSemesterTypeChange = (newType) => {
+    if (newType === semesterType) return;
+    setSemesterType(newType);
+    if (newType === 'odd') {
+      const oddSem = Number(selectedSemester) % 2 === 0 ? Math.max(1, Number(selectedSemester) - 1) : Number(selectedSemester);
+      setSelectedSemester(oddSem);
+      notify('Switched to Odd Semesters session (Sem 1, 3, 5, 7)', 'info');
+    } else {
+      const evenSem = Number(selectedSemester) % 2 !== 0 ? Math.min(8, Number(selectedSemester) + 1) : Number(selectedSemester);
+      setSelectedSemester(evenSem);
+      notify('Switched to Even Semesters session (Sem 2, 4, 6, 8)', 'info');
+    }
+  };
 
   // Filter subjects for the selected semester
   const semSubjects = subjects.filter(s => 
@@ -233,7 +254,8 @@ export default function ConstraintForm({ onClose }) {
         selectedLabs: laboratories.filter(l => selectedLabs.includes(l.id)),
         sectionsPerYear: { 1: numSections, 2: numSections, 3: numSections, 4: numSections },
         selectedSubjectsByYear: { [calcYear]: selectedSubjs },
-        subjectSettings: configs
+        subjectSettings: configs,
+        semesterType: semesterType
       });
       setIsGenerating(false);
       if (res && onClose) onClose();
@@ -297,7 +319,123 @@ export default function ConstraintForm({ onClose }) {
         </div>
       </div>
 
-      {/* Step 1: Classrooms Selection */}
+      {/* Step 1: Academic Session (Term) Selection */}
+      <div className={`p-4 rounded-xl border space-y-3.5 transition-colors ${
+        isDark ? 'bg-[#090d16]/80 border-blue-900/40' : 'bg-blue-50/60 border-blue-200'
+      }`}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h4 className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              Select Semester
+            </h4>
+          </div>
+          <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-semibold border ${
+            semesterType === 'odd'
+              ? isDark ? 'bg-amber-950/60 text-amber-300 border-amber-800/40' : 'bg-amber-100 text-amber-800 border-amber-300'
+              : isDark ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/40' : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+          }`}>
+            Active: {semesterType === 'odd' ? 'Odd Semester' : 'Even Semester'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-0.5">
+          <button
+            type="button"
+            onClick={() => handleSemesterTypeChange('odd')}
+            className={`p-3.5 rounded-xl border text-left transition-all relative overflow-hidden flex items-start justify-between cursor-pointer ${
+              semesterType === 'odd'
+                ? isDark 
+                  ? 'bg-blue-600/20 border-blue-500 ring-2 ring-blue-500/40 shadow-sm' 
+                  : 'bg-white border-blue-500 ring-2 ring-blue-500/30 shadow-sm'
+                : isDark 
+                  ? 'bg-slate-900/60 border-slate-800 hover:border-slate-700' 
+                  : 'bg-white/70 border-slate-200 hover:border-slate-300'
+            }`}
+          >
+            <div>
+              <div className="flex items-center gap-2">
+                <span className={`text-sm font-bold ${
+                  semesterType === 'odd' 
+                    ? isDark ? 'text-blue-300' : 'text-blue-700' 
+                    : isDark ? 'text-slate-200' : 'text-slate-800'
+                }`}>
+                  Odd Semester
+                </span>
+                {semesterType === 'odd' && (
+                  <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 mt-2">
+                {ODD_SEMESTERS.map(s => (
+                  <span key={s.id} className={`text-[10px] px-2 py-0.5 rounded font-semibold ${
+                    semesterType === 'odd'
+                      ? 'bg-blue-600 text-white'
+                      : isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {s.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className={`w-5 h-5 rounded-full flex items-center justify-center border shrink-0 ${
+              semesterType === 'odd'
+                ? 'bg-blue-600 border-blue-500 text-white'
+                : isDark ? 'border-slate-700 text-transparent' : 'border-slate-300 text-transparent'
+            }`}>
+              <Check className="w-3 h-3 stroke-[3]" />
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleSemesterTypeChange('even')}
+            className={`p-3.5 rounded-xl border text-left transition-all relative overflow-hidden flex items-start justify-between cursor-pointer ${
+              semesterType === 'even'
+                ? isDark 
+                  ? 'bg-blue-600/20 border-blue-500 ring-2 ring-blue-500/40 shadow-sm' 
+                  : 'bg-white border-blue-500 ring-2 ring-blue-500/30 shadow-sm'
+                : isDark 
+                  ? 'bg-slate-900/60 border-slate-800 hover:border-slate-700' 
+                  : 'bg-white/70 border-slate-200 hover:border-slate-300'
+            }`}
+          >
+            <div>
+              <div className="flex items-center gap-2">
+                <span className={`text-sm font-bold ${
+                  semesterType === 'even' 
+                    ? isDark ? 'text-blue-300' : 'text-blue-700' 
+                    : isDark ? 'text-slate-200' : 'text-slate-800'
+                }`}>
+                  Even Semester
+                </span>
+                {semesterType === 'even' && (
+                  <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 mt-2">
+                {EVEN_SEMESTERS.map(s => (
+                  <span key={s.id} className={`text-[10px] px-2 py-0.5 rounded font-semibold ${
+                    semesterType === 'even'
+                      ? 'bg-blue-600 text-white'
+                      : isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {s.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className={`w-5 h-5 rounded-full flex items-center justify-center border shrink-0 ${
+              semesterType === 'even'
+                ? 'bg-blue-600 border-blue-500 text-white'
+                : isDark ? 'border-slate-700 text-transparent' : 'border-slate-300 text-transparent'
+            }`}>
+              <Check className="w-3 h-3 stroke-[3]" />
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* Step 2: Classrooms Selection */}
       <div className="space-y-2.5">
         <div className="flex items-center justify-between">
           <span className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
@@ -333,7 +471,7 @@ export default function ConstraintForm({ onClose }) {
         </div>
       </div>
 
-      {/* Step 2: Laboratories Selection */}
+      {/* Step 3: Laboratories Selection */}
       <div className="space-y-2.5">
         <div className="flex items-center justify-between">
           <span className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
@@ -364,7 +502,7 @@ export default function ConstraintForm({ onClose }) {
                 </div>
                 <div className="min-w-0">
                   <div className={`text-xs font-semibold truncate ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{lab.code} - {lab.name}</div>
-                  <div className="text-[10px] text-slate-500 font-mono">Dept: {lab.department_id || department} • Cap: {lab.capacity || 40}</div>
+                  <div className="text-[10px] text-slate-500 font-mono">Dept: {lab.department_id || department} • Cap: {lab.capacity || 90}</div>
                 </div>
               </div>
             );
@@ -372,7 +510,7 @@ export default function ConstraintForm({ onClose }) {
         </div>
       </div>
 
-      {/* Step 3: Target Cohort (Semester & Dynamic Section) */}
+      {/* Step 4: Target Cohort (Semester & Dynamic Section) */}
       <div className={`p-3.5 rounded-xl border flex flex-wrap items-center justify-between gap-4 ${
         isDark ? 'bg-[#090d16]/60 border-slate-800' : 'bg-slate-50/70 border-slate-200'
       }`}>
@@ -382,7 +520,7 @@ export default function ConstraintForm({ onClose }) {
             <div className={`flex rounded-md p-0.5 border ${
               isDark ? 'bg-[#0f172a] border-[#1e293b]' : 'bg-white border-slate-200'
             }`}>
-              {SEMESTERS.map(s => (
+              {availableSemesters.map(s => (
                 <button
                   key={s.id}
                   onClick={() => setSelectedSemester(Number(s.value))}
@@ -465,7 +603,7 @@ export default function ConstraintForm({ onClose }) {
         </select>
       </div>
 
-      {/* Step 3: Course Allocation from Database Curriculum */}
+      {/* Step 5: Course Allocation from Database Curriculum */}
       <div className="space-y-2.5">
         <div className="flex items-center justify-between">
           <span className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
@@ -663,7 +801,7 @@ export default function ConstraintForm({ onClose }) {
         isDark ? 'border-slate-800' : 'border-slate-200'
       }`}>
         <div className="text-xs text-slate-400">
-          Selected: <span className="font-semibold text-blue-400">{selectedCRs.length} Classrooms</span> • <span className="font-semibold text-emerald-400">{selectedLabs.length} Labs</span> • <span className="font-semibold text-purple-400">{selectedSubjs.length} Courses</span>
+          Selected: <span className="font-semibold text-blue-400">{selectedCRs.length} Classrooms</span> • <span className="font-semibold text-emerald-400">{selectedLabs.length} Labs</span> • <span className="font-semibold text-blue-300">{selectedSubjs.length} Courses</span>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
           <button 
@@ -674,7 +812,7 @@ export default function ConstraintForm({ onClose }) {
             }`}
           >
             <Zap className="w-3.5 h-3.5 text-blue-500" />
-            <span>Generate Year {selectedYear} Sec {targetSection}</span>
+            <span>Generate Sem {selectedSemester} Sec {targetSection}</span>
           </button>
           <button 
             onClick={handleGenAll} 
@@ -682,7 +820,7 @@ export default function ConstraintForm({ onClose }) {
             className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all disabled:opacity-50"
           >
             {isGenerating ? <RotateCcw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-            <span>{isGenerating ? 'Computing...' : 'Generate All Department Drafts'}</span>
+            <span>{isGenerating ? 'Computing...' : `Generate All ${semesterType === 'odd' ? 'Odd' : 'Even'} Semester Drafts`}</span>
           </button>
         </div>
       </div>

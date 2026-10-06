@@ -118,7 +118,7 @@ class TimetableConstraintEngine:
                 return ph_labs
         return self._get_department_labs()
 
-    def generate_department_drafts(self, year_configs=None, classrooms=None, selected_subjects_by_year=None, subject_settings=None, selected_labs=None, section_classrooms=None):
+    def generate_department_drafts(self, year_configs=None, classrooms=None, selected_subjects_by_year=None, subject_settings=None, selected_labs=None, section_classrooms=None, semester_type='odd'):
         """
         Generates zero-overlap draft timetables for all requested years and sections in the department.
         """
@@ -150,6 +150,8 @@ class TimetableConstraintEngine:
         # Global audit: faculty clashes prevented globally, rooms scoped to department & shared facilities
         existing_timetables = Timetable.query.all()
         for tt in existing_timetables:
+            if tt.department_id == self.department:
+                continue
             grid = tt.grid_data or {}
             for day, day_slots in grid.items():
                 if day not in room_schedule:
@@ -177,10 +179,12 @@ class TimetableConstraintEngine:
 
         all_drafts = []
         cr_idx = 0
+        is_even = str(semester_type).lower() == 'even'
 
         for year, config in year_configs.items():
             num_sections = config.get('sections', 2)
             section_names = ['A', 'B', 'C', 'D'][:num_sections]
+            sem_val = (year * 2) if is_even else ((year * 2) - 1)
 
             year_subjs = []
             if selected_subjects_by_year and year in selected_subjects_by_year:
@@ -188,12 +192,13 @@ class TimetableConstraintEngine:
                 year_subjs = Subject.query.filter(Subject.id.in_(chosen_ids)).all()
 
             if not year_subjs:
-                year_subjs = Subject.query.filter_by(department_id=self.department, year=year).limit(6).all()
+                year_subjs = Subject.query.filter_by(department_id=self.department, semester=sem_val).all()
+                if not year_subjs:
+                    year_subjs = Subject.query.filter_by(department_id=self.department, year=year).limit(6).all()
                 if not year_subjs:
                     year_subjs = Subject.query.filter_by(year=year).limit(6).all()
 
             for sec in section_names:
-                sem_val = (year * 2) - 1
                 sec_key = f'S{sem_val}_Sec{sec}'
                 chosen_cr_id = (section_classrooms or {}).get(sec_key) or (section_classrooms or {}).get(f'{year}_{sec}') or (section_classrooms or {}).get(sec)
                 assigned_room = None
@@ -208,6 +213,7 @@ class TimetableConstraintEngine:
 
                 draft = self._generate_section_schedule(
                     year=year,
+                    semester=sem_val,
                     section=sec,
                     subjects=year_subjs,
                     assigned_room=assigned_room,

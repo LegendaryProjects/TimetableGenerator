@@ -6,15 +6,34 @@ const AuthContext = createContext(null);
 // 3-Hour Session Timeout in milliseconds (SRS NF-005)
 const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
 
+export function formatLoginTime(timestamp) {
+  if (!timestamp) return 'Just now';
+  const num = Number(timestamp);
+  if (isNaN(num)) return 'Just now';
+  const date = new Date(num);
+  if (isNaN(date.getTime())) return 'Just now';
+
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
+
+  const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+
+  if (isToday) {
+    return `Today at ${timeStr}`;
+  }
+  const dateStr = date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+  return `${dateStr}, ${timeStr}`;
+}
+
 export function AuthProvider({ children }) {
   const [departmentHods, setDepartmentHods] = useState([]);
   const [currentUser, setCurrentUser] = useState(() => {
     const saved = localStorage.getItem('nitk_user');
     const token = localStorage.getItem('nitk_token');
-    const loginTime = localStorage.getItem('nitk_login_time');
+    const savedLoginTime = localStorage.getItem('nitk_login_time');
 
-    if (saved && token && loginTime) {
-      const elapsed = Date.now() - Number(loginTime);
+    if (saved && token && savedLoginTime) {
+      const elapsed = Date.now() - Number(savedLoginTime);
       if (elapsed < THREE_HOURS_MS) {
         try {
           return JSON.parse(saved);
@@ -29,6 +48,10 @@ export function AuthProvider({ children }) {
       }
     }
     return null; // Require login with verified database credentials
+  });
+
+  const [loginTime, setLoginTime] = useState(() => {
+    return localStorage.getItem('nitk_login_time') || (localStorage.getItem('nitk_user') ? String(Date.now()) : null);
   });
 
   const [authModalOpen, setAuthModalOpen] = useState(!currentUser);
@@ -103,8 +126,10 @@ export function AuthProvider({ children }) {
       throw new Error('Authentication failed. User record not found.');
     }
 
-    // Record login timestamp for 3-hour session timeout
-    localStorage.setItem('nitk_login_time', String(Date.now()));
+    // Record login timestamp for 3-hour session timeout & Last Login display
+    const now = String(Date.now());
+    localStorage.setItem('nitk_login_time', now);
+    setLoginTime(now);
 
     setCurrentUser(res.user);
     setAuthModalOpen(false);
@@ -114,7 +139,7 @@ export function AuthProvider({ children }) {
   /**
    * User Signup handler connecting strictly to Flask backend & SQL Database
    */
-  const signup = async ({ name, department, year, semester, section, email, password, role = 'VIEWER', userType = 'Student', hodId }) => {
+  const signup = async ({ name, department, year, semester, section, email, password, role = 'VIEWER', userType = 'Student', hodId, designation = 'Assistant Professor' }) => {
     let signupEmail = email;
     let signupName = name;
     let signupDept = department || 'IT';
@@ -150,14 +175,17 @@ export function AuthProvider({ children }) {
       email: signupEmail.trim().toLowerCase(),
       password,
       role: role === 'HOD' ? 'HoD' : 'VIEWER',
-      userType: userType || 'Student'
+      userType: userType || 'Student',
+      designation
     });
 
     if (!res || !res.user) {
       throw new Error('Registration failed.');
     }
 
-    localStorage.setItem('nitk_login_time', String(Date.now()));
+    const now = String(Date.now());
+    localStorage.setItem('nitk_login_time', now);
+    setLoginTime(now);
 
     setCurrentUser(res.user);
     setAuthModalOpen(false);
@@ -167,6 +195,7 @@ export function AuthProvider({ children }) {
   const logout = () => {
     api.logout();
     localStorage.removeItem('nitk_login_time');
+    setLoginTime(null);
     setCurrentUser(null);
     setAuthModalOpen(true);
   };
@@ -177,6 +206,8 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider value={{
       currentUser,
       isHod,
+      loginTime,
+      formattedLoginTime: formatLoginTime(loginTime),
       authModalOpen,
       setAuthModalOpen,
       authModalTab,

@@ -93,12 +93,12 @@ def seed_database():
 
     # 3. Classrooms
     classrooms_data = [
-        {'id': 'cr_it1', 'code': 'CR 2.2 LHC-D', 'name': 'CR 2.2 LHC-D, NITK Surathkal', 'capacity': 75, 'department_id': 'IT'},
-        {'id': 'cr_it2', 'code': 'CR 2.3 LHC-D', 'name': 'CR 2.3 LHC-D, NITK Surathkal', 'capacity': 75, 'department_id': 'IT'},
-        {'id': 'cr_cse1', 'code': 'CR 1.1 LHC-C', 'name': 'CR 1.1 LHC-C, NITK Surathkal', 'capacity': 80, 'department_id': 'CSE'},
-        {'id': 'cr_cse2', 'code': 'CR 1.2 LHC-C', 'name': 'CR 1.2 LHC-C, NITK Surathkal', 'capacity': 80, 'department_id': 'CSE'},
-        {'id': 'cr_ece1', 'code': 'CR 3.1 LHC-B', 'name': 'CR 3.1 LHC-B, NITK Surathkal', 'capacity': 70, 'department_id': 'ECE'},
-        {'id': 'cr_ai1', 'code': 'CR 4.1 LHC-A', 'name': 'CR 4.1 LHC-A, NITK Surathkal', 'capacity': 65, 'department_id': 'AI'}
+        {'id': 'cr_it1', 'code': 'CR 2.2 LHC-D', 'name': 'CR 2.2 LHC-D, NITK Surathkal', 'capacity': 90, 'department_id': 'IT'},
+        {'id': 'cr_it2', 'code': 'CR 2.3 LHC-D', 'name': 'CR 2.3 LHC-D, NITK Surathkal', 'capacity': 90, 'department_id': 'IT'},
+        {'id': 'cr_cse1', 'code': 'CR 1.1 LHC-C', 'name': 'CR 1.1 LHC-C, NITK Surathkal', 'capacity': 90, 'department_id': 'CSE'},
+        {'id': 'cr_cse2', 'code': 'CR 1.2 LHC-C', 'name': 'CR 1.2 LHC-C, NITK Surathkal', 'capacity': 90, 'department_id': 'CSE'},
+        {'id': 'cr_ece1', 'code': 'CR 3.1 LHC-B', 'name': 'CR 3.1 LHC-B, NITK Surathkal', 'capacity': 90, 'department_id': 'ECE'},
+        {'id': 'cr_ai1', 'code': 'CR 4.1 LHC-A', 'name': 'CR 4.1 LHC-A, NITK Surathkal', 'capacity': 90, 'department_id': 'AI'}
     ]
 
     for cr in classrooms_data:
@@ -108,11 +108,11 @@ def seed_database():
 
     # 4. Laboratories
     labs_data = [
-        {'id': 'lab_it1', 'code': 'UG-Lab-3', 'name': 'UG-Lab-3, 6th Floor IT Dept, NITK Surathkal', 'capacity': 45, 'department_id': 'IT'},
-        {'id': 'lab_it2', 'code': 'UG-Lab-2', 'name': 'UG-Lab-2, 6th Floor IT Dept, NITK Surathkal', 'capacity': 45, 'department_id': 'IT'},
-        {'id': 'lab_cse1', 'code': 'CSE-Lab-1', 'name': 'CSE Software Lab 1, 3rd Floor CSE Dept, NITK Surathkal', 'capacity': 50, 'department_id': 'CSE'},
-        {'id': 'lab_ece1', 'code': 'DSP-Lab', 'name': 'DSP & Communication Lab, ECE Dept, NITK Surathkal', 'capacity': 40, 'department_id': 'ECE'},
-        {'id': 'lab_ai1', 'code': 'AI-Lab-1', 'name': 'Deep Learning & AI Lab, CS/AI Dept, NITK Surathkal', 'capacity': 40, 'department_id': 'AI'}
+        {'id': 'lab_it1', 'code': 'UG-Lab-3', 'name': 'UG-Lab-3, 6th Floor IT Dept, NITK Surathkal', 'capacity': 90, 'department_id': 'IT'},
+        {'id': 'lab_it2', 'code': 'UG-Lab-2', 'name': 'UG-Lab-2, 6th Floor IT Dept, NITK Surathkal', 'capacity': 90, 'department_id': 'IT'},
+        {'id': 'lab_cse1', 'code': 'CSE-Lab-1', 'name': 'CSE Software Lab 1, 3rd Floor CSE Dept, NITK Surathkal', 'capacity': 90, 'department_id': 'CSE'},
+        {'id': 'lab_ece1', 'code': 'DSP-Lab', 'name': 'DSP & Communication Lab, ECE Dept, NITK Surathkal', 'capacity': 90, 'department_id': 'ECE'},
+        {'id': 'lab_ai1', 'code': 'AI-Lab-1', 'name': 'Deep Learning & AI Lab, CS/AI Dept, NITK Surathkal', 'capacity': 90, 'department_id': 'AI'}
     ]
 
     for lb in labs_data:

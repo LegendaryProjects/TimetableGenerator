@@ -138,7 +138,7 @@ class Classroom(db.Model):
     id = db.Column(db.String(20), primary_key=True)  # 'cr1', 'cr2'
     code = db.Column(db.String(50), nullable=False)
     name = db.Column(db.String(150), nullable=False)
-    capacity = db.Column(db.Integer, nullable=False, default=70)
+    capacity = db.Column(db.Integer, nullable=False, default=90)
     department_id = db.Column(db.String(10), db.ForeignKey('departments.id'), nullable=False)
 
     def to_dict(self):
@@ -160,7 +160,7 @@ class Laboratory(db.Model):
     id = db.Column(db.String(20), primary_key=True)  # 'lab1', 'lab2'
     code = db.Column(db.String(50), nullable=False)
     name = db.Column(db.String(150), nullable=False)
-    capacity = db.Column(db.Integer, nullable=False, default=40)
+    capacity = db.Column(db.Integer, nullable=False, default=90)
     department_id = db.Column(db.String(10), db.ForeignKey('departments.id'), nullable=False)
 
     def to_dict(self):

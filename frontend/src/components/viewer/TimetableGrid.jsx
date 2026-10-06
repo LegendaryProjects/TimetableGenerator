@@ -109,7 +109,7 @@ export default function TimetableGrid() {
         }`}>
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-500">
-              {isFacultyView ? <Users className="w-6 h-6 text-emerald-400" /> : <Calendar className="w-6 h-6" />}
+              {isFacultyView ? <Users className="w-6 h-6 text-blue-500" /> : <Calendar className="w-6 h-6" />}
             </div>
             <div>
               <div className="flex items-center gap-2.5 flex-wrap">
@@ -176,12 +176,12 @@ export default function TimetableGrid() {
                   <th key={p.id} className="p-2.5 text-center">
                     <div className={`text-xs sm:text-sm font-black ${
                       p.isBreak 
-                        ? isDark ? 'text-amber-400' : 'text-amber-700'
+                        ? isDark ? 'text-blue-400' : 'text-blue-700'
                         : isDark ? 'text-slate-100' : 'text-slate-800'
                     }`}>
                       {p.label}
                       {p.id === 1 && (
-                        <span className="text-[9px] font-medium text-amber-500 block">No Classes</span>
+                        <span className="text-[9px] font-medium text-slate-400 block">No Classes</span>
                       )}
                     </div>
                     <div className="text-[11px] font-mono text-slate-400 mt-0.5 font-medium">
@@ -214,12 +214,12 @@ export default function TimetableGrid() {
                         <td key={p.id} className="p-1">
                           <div className={`min-h-[94px] h-full w-full rounded-xl border border-dashed flex flex-col items-center justify-center text-center p-1.5 select-none ${
                             isDark 
-                              ? 'bg-amber-950/25 border-amber-500/30 text-amber-300' 
-                              : 'bg-amber-50/90 border-amber-200 text-amber-900'
+                              ? 'bg-blue-950/20 border-blue-900/40 text-blue-300' 
+                              : 'bg-slate-100/90 border-slate-300 text-slate-700'
                           }`}>
-                            <Clock className="w-4 h-4 mb-1 text-amber-500 dark:text-amber-400" />
-                            <span className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-300">Lunch</span>
-                            <span className="text-[10px] font-mono text-amber-700/80 dark:text-amber-400/80 mt-0.5 font-medium">11:45-13:00</span>
+                            <Clock className="w-4 h-4 mb-1 text-blue-400" />
+                            <span className="text-xs font-black uppercase tracking-wider text-blue-400">Lunch</span>
+                            <span className="text-[10px] font-mono text-slate-400 mt-0.5 font-medium">11:45-13:00</span>
                           </div>
                         </td>
                       );
@@ -276,11 +276,11 @@ export default function TimetableGrid() {
               <span className="font-medium">Theory Lecture</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-400"></span>
               <span className="font-medium">Practical Laboratory</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+              <span className="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
               <span className="font-medium">Lunch Break</span>
             </div>
           </div>

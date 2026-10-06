@@ -313,12 +313,12 @@ export default function InteractiveGrid() {
                 <th key={p.id} className="p-2 text-center">
                   <div className={`text-xs font-bold ${
                     p.isBreak 
-                      ? isDark ? 'text-amber-400' : 'text-amber-700'
+                      ? isDark ? 'text-blue-400' : 'text-blue-700'
                       : isDark ? 'text-slate-200' : 'text-slate-800'
                   }`}>
                     {p.label}
                     {p.id === 1 && (
-                      <span className="text-[9px] font-medium text-amber-500 block">No Classes</span>
+                      <span className="text-[9px] font-medium text-slate-400 block">No Classes</span>
                     )}
                   </div>
                   <div className="text-[10px] font-mono text-slate-500 mt-0.5">
@@ -351,12 +351,12 @@ export default function InteractiveGrid() {
                       <td key={p.id} className="p-1">
                         <div className={`h-[88px] w-full rounded-lg border border-dashed flex flex-col items-center justify-center text-center p-1 select-none ${
                           isDark 
-                            ? 'bg-amber-950/25 border-amber-500/30 text-amber-300' 
-                            : 'bg-amber-50/90 border-amber-200 text-amber-900'
+                            ? 'bg-blue-950/20 border-blue-900/40 text-blue-300' 
+                            : 'bg-slate-100/90 border-slate-300 text-slate-700'
                         }`}>
-                          <Clock className="w-3.5 h-3.5 mb-1 text-amber-500 dark:text-amber-400" />
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-amber-500 dark:text-amber-300">Lunch</span>
-                          <span className="text-[9px] font-mono text-amber-600/80 dark:text-amber-400/80 mt-0.5">11:45-13:00</span>
+                          <Clock className="w-3.5 h-3.5 mb-1 text-blue-400" />
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-blue-400">Lunch</span>
+                          <span className="text-[9px] font-mono text-slate-400 mt-0.5">11:45-13:00</span>
                         </div>
                       </td>
                     );

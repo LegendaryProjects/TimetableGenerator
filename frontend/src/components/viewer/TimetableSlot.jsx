@@ -30,7 +30,7 @@ export default function TimetableSlot({
             ? isInvalidTarget
               ? 'border-rose-500/80 bg-rose-950/25 text-rose-400 cursor-not-allowed ring-1 ring-rose-500/40'
               : isSwapTarget
-              ? 'border-emerald-500 bg-emerald-500/10 cursor-pointer text-emerald-400 ring-2 ring-emerald-500/50'
+              ? 'border-blue-400 bg-blue-500/10 cursor-pointer text-blue-300 ring-2 ring-blue-400/50'
               : isDark 
                 ? 'border-dashed border-slate-800 hover:border-blue-500/50 hover:bg-slate-800/40 cursor-pointer text-slate-500 hover:text-blue-300' 
                 : 'border-dashed border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 cursor-pointer text-slate-400 hover:text-blue-600'
@@ -39,7 +39,7 @@ export default function TimetableSlot({
         title={isPeriod1 ? 'Institutional Policy: Classes from 08:00 - 09:00 AM are prohibited' : isInvalidTarget ? 'Cannot swap here: conflict detected' : undefined}
       >
         <span className={`text-xs tracking-wide font-mono ${
-          isPeriod1 ? 'text-slate-500 font-medium text-[11px]' : isInvalidTarget ? 'text-rose-400' : isSwapTarget ? 'text-emerald-400 font-semibold' : ''
+          isPeriod1 ? 'text-slate-500 font-medium text-[11px]' : isInvalidTarget ? 'text-rose-400' : isSwapTarget ? 'text-blue-300 font-semibold' : ''
         }`}>
           {isPeriod1
             ? 'No Classes'
@@ -62,11 +62,11 @@ export default function TimetableSlot({
           : isInvalidTarget
           ? 'border-rose-500 bg-rose-950/30 text-rose-200 ring-2 ring-rose-500/60 cursor-not-allowed'
           : isSwapTarget
-          ? 'border-emerald-500 bg-emerald-600/20 text-emerald-200 ring-2 ring-emerald-500/50 cursor-pointer'
+          ? 'border-blue-400 bg-blue-600/20 text-blue-200 ring-2 ring-blue-400/50 cursor-pointer'
           : isLab
           ? isDark 
-            ? 'border-slate-800 border-l-4 border-l-emerald-500 bg-[#0c1815] hover:bg-[#11241f]'
-            : 'border-slate-200 border-l-4 border-l-emerald-600 bg-emerald-50/50 hover:bg-emerald-50 text-slate-900'
+            ? 'border-slate-800 border-l-4 border-l-blue-400 bg-[#0c1322] hover:bg-[#121c32]'
+            : 'border-slate-200 border-l-4 border-l-blue-500 bg-blue-50/40 hover:bg-blue-50 text-slate-900'
           : isDark
             ? 'border-slate-800 border-l-4 border-l-blue-500 bg-[#0f172a] hover:bg-[#172238]'
             : 'border-slate-200 border-l-4 border-l-blue-600 bg-blue-50/50 hover:bg-blue-50 text-slate-900'
@@ -79,16 +79,16 @@ export default function TimetableSlot({
           isInvalidTarget
             ? 'text-rose-400'
             : isSwapTarget
-            ? 'text-emerald-400'
+            ? 'text-blue-300'
             : isLab 
-            ? isDark ? 'text-emerald-400' : 'text-emerald-700' 
+            ? isDark ? 'text-blue-300' : 'text-blue-700' 
             : isDark ? 'text-blue-400' : 'text-blue-700'
         }`}>
           {slot.subjectCode}
         </span>
         {isLab && slot.roomName && (
           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ml-1 shrink-0 ${
-            isDark ? 'bg-emerald-950/70 text-emerald-300 border-emerald-800/50' : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+            isDark ? 'bg-blue-950/70 text-blue-300 border-blue-800/50' : 'bg-blue-100 text-blue-800 border-blue-300'
           }`}>
             {slot.roomName}
           </span>

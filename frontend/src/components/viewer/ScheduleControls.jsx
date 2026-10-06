@@ -46,56 +46,56 @@ export default function ScheduleControls() {
   }, [isFaculty, loggedInFaculty, setSelectedFacultyId]);
 
   return (
-    <div className={`border rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 transition-colors ${
+    <div className={`border rounded-2xl px-5 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 transition-colors w-full shadow-sm ${
       isDark 
         ? 'bg-[#0f172a] border-[#1e293b]' 
-        : 'bg-white border-slate-200 shadow-sm'
+        : 'bg-white border-slate-200'
     }`}>
-      <div className="flex flex-wrap items-center gap-3.5">
+      <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
 
         {/* View Mode Switch (Class Timetable vs My Faculty Schedule) */}
         {!isStudent && (
           <>
-            <div className={`flex rounded-lg p-0.5 border h-8.5 items-center ${
+            <div className={`flex rounded-xl p-1 border h-10 items-center ${
               isDark ? 'bg-[#090d16] border-[#1e293b]' : 'bg-slate-100 border-slate-200'
             }`}>
               <button
                 onClick={() => setViewMode('student')}
-                className={`h-7 px-3 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                className={`h-8 px-3.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all ${
                   viewMode === 'student' 
                     ? 'bg-blue-600 text-white shadow-sm' 
                     : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <GraduationCap className="w-3.5 h-3.5" />
+                <GraduationCap className="w-4 h-4" />
                 <span>Classroom Timetables</span>
               </button>
               <button
                 onClick={() => setViewMode('faculty')}
-                className={`h-7 px-3 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                className={`h-8 px-3.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all ${
                   viewMode === 'faculty' 
-                    ? 'bg-purple-600 text-white shadow-sm' 
+                    ? 'bg-blue-800 text-white shadow-sm' 
                     : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <Users className="w-3.5 h-3.5" />
+                <Users className="w-4 h-4" />
                 <span>{isFaculty ? 'My Timetable' : 'Faculty View'}</span>
               </button>
             </div>
 
-            <div className="h-5 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block" />
+            <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block" />
           </>
         )}
 
         {/* 1. Student Role: Locked strictly to their Department, Semester & Section */}
         {isStudent && (
           <div className="flex items-center gap-2">
-            <span className={`inline-flex items-center gap-2 h-8 px-3 rounded-lg text-xs font-bold border ${
+            <span className={`inline-flex items-center gap-2 h-9 px-3.5 rounded-xl text-sm font-semibold border ${
               isDark 
                 ? 'bg-blue-950/40 border-blue-800/60 text-blue-300' 
                 : 'bg-blue-50 border-blue-200 text-blue-800'
             }`}>
-              <CheckCircle2 className="w-3.5 h-3.5 text-blue-400" />
+              <CheckCircle2 className="w-4 h-4 text-blue-400" />
               <span>Enrolled: Dept. of {currentUser?.department} • Sem {currentUser?.semester || ((currentUser?.year * 2) - 1) || 5} - Section {currentUser?.section || 'A'}</span>
             </span>
           </div>
@@ -105,10 +105,10 @@ export default function ScheduleControls() {
         {isFaculty && (
           <div className="flex flex-wrap items-center gap-3">
             {/* Locked Faculty Name Badge */}
-            <span className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-xs font-semibold border ${
-              isDark ? 'bg-purple-950/40 border-purple-800/50 text-purple-200' : 'bg-purple-50 border-purple-200 text-purple-900'
+            <span className={`inline-flex items-center gap-2 h-9 px-3.5 rounded-xl text-sm font-semibold border ${
+              isDark ? 'bg-blue-950/70 border-blue-800/60 text-blue-200' : 'bg-blue-900/10 border-blue-800/30 text-blue-950'
             }`}>
-              <Lock className="w-3 h-3 text-purple-400" />
+              <Lock className="w-3.5 h-3.5 text-blue-400" />
               <span>Faculty: {currentUser?.name} • Dept. of {currentUser?.department}</span>
             </span>
 
@@ -116,15 +116,15 @@ export default function ScheduleControls() {
             {viewMode === 'student' && (
               <>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-slate-400">Sem:</span>
-                  <div className={`flex rounded-lg p-0.5 border h-8.5 items-center ${
+                  <span className="text-sm font-medium text-slate-400">Sem:</span>
+                  <div className={`flex rounded-xl p-1 border h-10 items-center ${
                     isDark ? 'bg-[#090d16] border-[#1e293b]' : 'bg-slate-100 border-slate-200'
                   }`}>
                     {SEMESTERS_LIST.map(s => (
                       <button
                         key={s.id}
                         onClick={() => setSelectedSemester(s.value)}
-                        className={`h-7 px-2 rounded-md text-xs font-semibold transition-all ${
+                        className={`h-8 px-2.5 rounded-lg text-sm font-semibold transition-all ${
                           Number(selectedSemester) === s.value 
                             ? 'bg-blue-600 text-white shadow-sm' 
                             : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
@@ -137,15 +137,15 @@ export default function ScheduleControls() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-slate-400">Sec:</span>
-                  <div className={`flex rounded-lg p-0.5 border h-8.5 items-center ${
+                  <span className="text-sm font-medium text-slate-400">Sec:</span>
+                  <div className={`flex rounded-xl p-1 border h-10 items-center ${
                     isDark ? 'bg-[#090d16] border-[#1e293b]' : 'bg-slate-100 border-slate-200'
                   }`}>
                     {SECTIONS_LIST.slice(0, 3).map(s => (
                       <button
                         key={s}
                         onClick={() => setSelectedSection(s)}
-                        className={`h-7 px-2.5 rounded-md text-xs font-semibold transition-all ${
+                        className={`h-8 px-3 rounded-lg text-sm font-semibold transition-all ${
                           selectedSection === s 
                             ? 'bg-blue-600 text-white shadow-sm' 
                             : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
@@ -165,11 +165,11 @@ export default function ScheduleControls() {
         {isHod && (
           <>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-slate-400">Dept:</span>
-              <span className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-xs font-semibold border ${
+              <span className="text-sm font-medium text-slate-400">Dept:</span>
+              <span className={`inline-flex items-center gap-1.5 h-9 px-3 rounded-xl text-sm font-semibold border ${
                 isDark ? 'bg-slate-800/80 border-slate-700 text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-800'
               }`}>
-                <Lock className="w-3 h-3 text-slate-400" />
+                <Lock className="w-3.5 h-3.5 text-slate-400" />
                 <span>{currentUser?.department || selectedDepartment}</span>
               </span>
             </div>
@@ -177,15 +177,15 @@ export default function ScheduleControls() {
             {viewMode === 'student' && (
               <>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-slate-400">Sem:</span>
-                  <div className={`flex rounded-lg p-0.5 border h-8.5 items-center ${
+                  <span className="text-sm font-medium text-slate-400">Sem:</span>
+                  <div className={`flex rounded-xl p-1 border h-10 items-center ${
                     isDark ? 'bg-[#090d16] border-[#1e293b]' : 'bg-slate-100 border-slate-200'
                   }`}>
                     {SEMESTERS_LIST.map(s => (
                       <button
                         key={s.id}
                         onClick={() => setSelectedSemester(s.value)}
-                        className={`h-7 px-2 rounded-md text-xs font-semibold transition-all ${
+                        className={`h-8 px-2.5 rounded-lg text-sm font-semibold transition-all ${
                           Number(selectedSemester) === s.value 
                             ? 'bg-blue-600 text-white shadow-sm' 
                             : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
@@ -198,15 +198,15 @@ export default function ScheduleControls() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-slate-400">Sec:</span>
-                  <div className={`flex rounded-lg p-0.5 border h-8.5 items-center ${
+                  <span className="text-sm font-medium text-slate-400">Sec:</span>
+                  <div className={`flex rounded-xl p-1 border h-10 items-center ${
                     isDark ? 'bg-[#090d16] border-[#1e293b]' : 'bg-slate-100 border-slate-200'
                   }`}>
                     {SECTIONS_LIST.slice(0, 3).map(s => (
                       <button
                         key={s}
                         onClick={() => setSelectedSection(s)}
-                        className={`h-7 px-2.5 rounded-md text-xs font-semibold transition-all ${
+                        className={`h-8 px-3 rounded-lg text-sm font-semibold transition-all ${
                           selectedSection === s 
                             ? 'bg-blue-600 text-white shadow-sm' 
                             : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
@@ -222,11 +222,11 @@ export default function ScheduleControls() {
 
             {viewMode === 'faculty' && (
               <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-slate-400">Instructor:</span>
+                <span className="text-sm font-medium text-slate-400">Instructor:</span>
                 <select
                   value={selectedFacultyId}
                   onChange={(e) => setSelectedFacultyId(e.target.value)}
-                  className={`h-8 px-2.5 border rounded-lg text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                  className={`h-9 px-3 border rounded-xl text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500 ${
                     isDark ? 'bg-[#090d16] border-[#1e293b] text-slate-200' : 'bg-white border-slate-200 text-slate-800'
                   }`}
                 >

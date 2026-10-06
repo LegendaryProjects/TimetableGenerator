@@ -14,7 +14,7 @@ from backend.modules.export_pdf.pdf_service import pdf_bp
 
 def create_app():
     app = Flask(__name__)
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    CORS(app, resources={r"/api/*": {"origins": "*"}}, allow_headers=["Content-Type", "Authorization"], methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 
     # Initialize Database
     init_db(app)
@@ -52,3 +52,5 @@ def create_app():
 if __name__ == '__main__':
     app = create_app()
     app.run(host='0.0.0.0', port=5000, debug=True)
+
+# we use python -m (module) backend.app because it helps for easy finding or rest of the modules.

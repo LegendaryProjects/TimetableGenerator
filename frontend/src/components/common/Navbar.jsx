@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 
 export default function Navbar() {
-  const { currentUser, isHod, logout, setAuthModalOpen, setAuthModalTab, setLoginType } = useAuth();
+  const { currentUser, isHod, logout, formattedLoginTime, setAuthModalOpen, setAuthModalTab, setLoginType } = useAuth();
   const { isEditingHodStudio, setIsEditingHodStudio, draftTimetables } = useTimetable();
   const { isDark, toggleTheme } = useTheme();
 
@@ -15,7 +15,7 @@ export default function Navbar() {
     <header className={`sticky top-0 z-40 w-full border-b transition-colors ${
       isDark ? 'bg-[#0b0f17]/95 border-[#182030] backdrop-blur-md' : 'bg-white/95 border-slate-200 backdrop-blur-md'
     }`}>
-      <div className="max-w-[98%] xl:max-w-[1700px] mx-auto px-2 sm:px-4 lg:px-6 h-15 flex items-center justify-between">
+      <div className="w-full px-8 sm:px-12 lg:px-20 h-20 flex items-center justify-between">
 
         {/* Institutional Branding */}
         <div 
@@ -39,7 +39,7 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Navigation Switcher (HoD Studio tab only shown if authenticated as HoD in database) */}
+        {/* Navigation Switcher */}
         <div className={`flex items-center rounded-lg p-0.5 border ${
           isDark ? 'bg-[#0f172a] border-[#1e293b]' : 'bg-slate-100 border-slate-200'
         }`}>
@@ -74,9 +74,16 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Right Section: Theme Toggle & Database Authenticated User */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          
+        {/* Right Section: Theme Toggle & User Account */}
+        <div className="flex items-center gap-3">
+          {currentUser && formattedLoginTime && (
+            <span className={`text-[10px] sm:text-[11px] font-medium px-2 py-0.5 rounded-md border transition-colors ${
+              isDark ? 'bg-blue-950/60 border-blue-900/50 text-blue-300' : 'bg-slate-100 border-slate-200 text-slate-600'
+            }`} title="Last logged in timestamp">
+              Last login: {formattedLoginTime}
+            </span>
+          )}
+
           {/* Theme Toggle Button */}
           <button
             onClick={toggleTheme}
@@ -89,21 +96,23 @@ export default function Navbar() {
             aria-label="Toggle theme"
           >
             {isDark ? (
-              <Sun className="w-4 h-4 text-amber-400" />
+              <Sun className="w-4 h-4 text-blue-400" />
             ) : (
               <Moon className="w-4 h-4 text-slate-600" />
             )}
           </button>
 
-          {/* User Account / Profile from Database */}
+          {/* User Account / Profile */}
           {currentUser ? (
-            <div className={`flex items-center gap-2.5 pl-2 border-l ${isDark ? 'border-[#1e293b]' : 'border-slate-200'}`}>
+            <div className={`flex items-center gap-2.5 pl-3 border-l ${isDark ? 'border-[#1e293b]' : 'border-slate-200'}`}>
               <div className="text-right hidden sm:block">
-                <div className={`text-xs font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentUser.name}</div>
-                <div className="text-[11px] text-slate-400 flex items-center justify-end gap-1.5">
+                <div>
+                  <span className={`text-xs font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentUser.name}</span>
+                </div>
+                <div className="text-[11px] text-slate-400 flex items-center justify-end gap-1.5 mt-0.5">
                   <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold uppercase ${
                     isHod
-                      ? 'bg-purple-950/60 text-purple-300 border border-purple-800/50'
+                      ? 'bg-blue-950/90 text-blue-200 border border-blue-800'
                       : 'bg-blue-950/60 text-blue-300 border border-blue-800/50'
                   }`}>
                     {isHod ? 'HoD' : (currentUser.userType || 'Student')}
@@ -115,8 +124,8 @@ export default function Navbar() {
                 onClick={logout} 
                 className={`p-1.5 rounded-lg border transition-colors ${
                   isDark 
-                    ? 'border-[#1e293b] text-slate-400 hover:text-red-400 hover:bg-red-500/10' 
-                    : 'border-slate-200 text-slate-500 hover:text-red-600 hover:bg-red-50'
+                    ? 'border-[#1e293b] text-slate-400 hover:text-white hover:bg-slate-800' 
+                    : 'border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-100'
                 }`} 
                 title="Sign Out"
               >

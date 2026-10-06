@@ -60,9 +60,48 @@ def get_options():
     foundation_profs = Professor.query.filter(Professor.department_id.in_(foundation_depts)).all()
     all_profs = Professor.query.all()
 
+    # Merge faculty users from User table so any newly registered professor appears seamlessly
+    faculty_users = User.query.filter(
+        (User.user_type == 'Faculty') | (User.role.in_(['HoD', 'FACULTY', 'PROFESSOR']))
+    ).all()
+    user_email_map = {u.name.lower(): u.email for u in faculty_users}
+    user_id_email_map = {u.user_id: u.email for u in faculty_users}
+
+    prof_list = []
+    seen_prof_emails = set()
+    for p in professors:
+        p_dict = p.to_dict()
+        # Find matching email from registered users or formulate standard academic email
+        matched_email = user_email_map.get(p.name.lower())
+        if not matched_email:
+            # Clean name for fallback email format: firstname.dept@nitk.edu.in
+            name_parts = p.name.replace('Dr.', '').replace('Prof.', '').strip().lower().split()
+            clean_name = '.'.join(name_parts[:2]) if len(name_parts) >= 2 else (name_parts[0] if name_parts else 'faculty')
+            matched_email = f"{clean_name}.{p.department_id.lower()}@nitk.edu.in"
+        p_dict['email'] = matched_email
+        prof_list.append(p_dict)
+        seen_prof_emails.add(matched_email.lower())
+
+    # Include any registered faculty user in this department who might not be in the pre-seeded professors table
+    for fu in faculty_users:
+        if fu.email.lower() not in seen_prof_emails:
+            if not dept_code or fu.department == dept_code:
+                prof_rec = Professor.query.filter(
+                    (Professor.name.ilike(fu.name)) & (Professor.department_id == fu.department)
+                ).first()
+                prof_desig = prof_rec.designation if prof_rec else ('Professor & HoD' if fu.role == 'HoD' else 'Assistant Professor')
+                prof_list.append({
+                    'id': prof_rec.id if prof_rec else fu.user_id,
+                    'name': fu.name,
+                    'department': fu.department,
+                    'designation': prof_desig,
+                    'email': fu.email
+                })
+                seen_prof_emails.add(fu.email.lower())
+
     return jsonify({
         'departments': dept_list,
-        'professors': [p.to_dict() for p in professors],
+        'professors': prof_list,
         'foundationProfessors': [p.to_dict() for p in foundation_profs],
         'allProfessors': [p.to_dict() for p in all_profs],
         'classrooms': [c.to_dict() for c in classrooms],
@@ -136,8 +175,9 @@ def generate_drafts(current_user):
     sections_per_year = data.get('sectionsPerYear')
     selected_classrooms = data.get('selectedClassrooms')
     selected_labs = data.get('selectedLabs')
-    selected_classroom_id = data.get('selectedClassroomId') or data.get('selectedClassroom')
     section_classrooms = data.get('sectionClassrooms', {})
+    semester_type = data.get('semesterType', 'odd')
+    selected_classroom_id = data.get('selectedClassroomId') or data.get('selected_classroom_id')
 
     engine = TimetableConstraintEngine(department=department)
 
@@ -169,7 +209,8 @@ def generate_drafts(current_user):
             selected_subjects_by_year=subjs_by_yr,
             subject_settings=subject_settings,
             selected_labs=selected_labs,
-            section_classrooms=section_classrooms
+            section_classrooms=section_classrooms,
+            semester_type=semester_type
         )
 
     infeasible_drafts = [d for d in drafts if not d.get('isFeasible', True)]

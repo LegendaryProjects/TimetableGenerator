@@ -4,7 +4,7 @@
  * Supports JWT authentication headers and automatic token management.
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 function getAuthHeaders() {
   const token = localStorage.getItem('nitk_token');
@@ -38,6 +38,9 @@ async function request(endpoint, options = {}) {
     return data;
   } catch (err) {
     console.error(`API Error on [${config.method || 'GET'} ${endpoint}]:`, err.message);
+    if (err.name === 'TypeError' && err.message?.includes('Failed to fetch')) {
+      throw new Error('Unable to connect to the backend server. Please verify the backend is running on port 5000.');
+    }
     throw err;
   }
 }
@@ -55,10 +58,10 @@ export const api = {
     return data;
   },
 
-  async register({ email, password, name, role = 'VIEWER', department = 'IT', year = 3, semester = 5, section = 'A', userType = 'Student' }) {
+  async register({ email, password, name, role = 'VIEWER', department = 'IT', year = 3, semester = 5, section = 'A', userType = 'Student', designation = 'Assistant Professor' }) {
     const data = await request('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ email, password, name, role, department, year, semester, section, userType })
+      body: JSON.stringify({ email, password, name, role, department, year, semester, section, userType, designation })
     });
     if (data.token) {
       localStorage.setItem('nitk_token', data.token);
@@ -68,6 +71,13 @@ export const api = {
 
   async getHods() {
     return request('/auth/hods');
+  },
+
+  async forgotPassword({ email, newPassword }) {
+    return request('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email, newPassword })
+    });
   },
 
   async getCurrentUser() {

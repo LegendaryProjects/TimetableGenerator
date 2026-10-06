@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { api } from '../../services/api';
-import { X, ShieldCheck, User, Lock, Mail, ArrowRight, GraduationCap, Briefcase } from 'lucide-react';
+import { X, ShieldCheck, User, Lock, Mail, ArrowRight, GraduationCap, Briefcase, KeyRound, CheckCircle2, ArrowLeft } from 'lucide-react';
+import PasswordStrengthIndicator, { checkPasswordStrength } from './PasswordStrengthIndicator';
 
 const SEMESTERS = [
   { id: '1', label: 'Sem 1', value: 1 },
@@ -27,7 +28,7 @@ export default function AuthModal() {
   // Login Portal Type: 'HOD' | 'FACULTY' | 'STUDENT'
   const [activePortal, setActivePortal] = useState('HOD');
 
-  // Dynamic Departments and Faculty
+  // Dynamic Departments and Faculty for Login
   const [departments, setDepartments] = useState([]);
   const [departmentalFaculty, setDepartmentalFaculty] = useState([]);
 
@@ -47,11 +48,23 @@ export default function AuthModal() {
   const [department, setDepartment] = useState('IT');
   const [semester, setSemester] = useState('5');
   const [section, setSection] = useState('A');
+  const [designation, setDesignation] = useState('Assistant Professor');
   const [signupRole, setSignupRole] = useState('STUDENT'); // 'HOD' | 'FACULTY' | 'STUDENT'
+
+  // Sign-Up Professor Selection
+  const [signupFacultyList, setSignupFacultyList] = useState([]);
+  const [signupSelectedProfId, setSignupSelectedProfId] = useState('');
+
+  // Forgot Password State
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotNewPassword, setForgotNewPassword] = useState('');
+  const [forgotConfirmPassword, setForgotConfirmPassword] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Load Departments on Mount
   useEffect(() => {
     async function loadDepts() {
       try {
@@ -59,6 +72,7 @@ export default function AuthModal() {
         if (res?.departments && res.departments.length > 0) {
           setDepartments(res.departments);
           if (!facultyDept) setFacultyDept(res.departments[0].id);
+          if (!department) setDepartment(res.departments[0].id);
         }
       } catch (err) {
         console.error('Failed to load departments:', err);
@@ -67,12 +81,14 @@ export default function AuthModal() {
     loadDepts();
   }, []);
 
+  // Sync HoDs
   useEffect(() => {
     if (departmentHods && departmentHods.length > 0 && !selectedHodId) {
       setSelectedHodId(departmentHods[0].id);
     }
   }, [departmentHods, selectedHodId]);
 
+  // Load Faculty for Login Portal when facultyDept changes
   useEffect(() => {
     async function loadFaculty() {
       if (!facultyDept) return;
@@ -87,17 +103,66 @@ export default function AuthModal() {
           }
         }
       } catch (err) {
-        console.error('Failed to load faculty:', err);
+        console.error('Failed to load faculty for login:', err);
       }
     }
     loadFaculty();
   }, [facultyDept]);
 
+  // Load Faculty for Sign-Up when department changes or signupRole is FACULTY
+  useEffect(() => {
+    async function loadSignupFaculty() {
+      if (!department) return;
+      try {
+        const res = await api.getOptions(department);
+        if (res?.professors) {
+          setSignupFacultyList(res.professors);
+        }
+      } catch (err) {
+        console.error('Failed to load faculty for signup:', err);
+      }
+    }
+    loadSignupFaculty();
+  }, [department]);
+
   if (!authModalOpen) return null;
 
-  // Handle Faculty Department Change to update selected professor
+  // Handle Faculty Department Change in Login
   const handleFacultyDeptChange = (dept) => {
     setFacultyDept(dept);
+  };
+
+  // Handle Department Change in Sign-Up
+  const handleSignupDeptChange = (dept) => {
+    setDepartment(dept);
+    setSignupSelectedProfId('');
+    setName('');
+    setEmail('');
+  };
+
+  // Handle Professor Select in Sign-Up
+  const handleSignupProfSelect = (e) => {
+    const profId = e.target.value;
+    setSignupSelectedProfId(profId);
+    if (profId === 'NEW_PROF') {
+      setName('');
+      setEmail('');
+    } else if (profId) {
+      const prof = signupFacultyList.find(p => (p.id || p.email) === profId);
+      if (prof) {
+        setName(prof.name);
+        setEmail(prof.email || '');
+        // Map designation if available
+        const d = prof.designation || '';
+        if (d.includes('Associate')) setDesignation('Associate Professor');
+        else if (d.includes('Assistant')) setDesignation('Assistant Professor');
+        else if (d.includes('Temporary')) setDesignation('Temporary Faculty');
+        else if (d.includes('Professor')) setDesignation('Professor');
+      }
+    } else {
+      setName('');
+      setEmail('');
+    }
   };
 
   const handleLogin = async (e) => {
@@ -126,14 +191,20 @@ export default function AuthModal() {
     setError('');
     setLoading(true);
     try {
+      const pwCheck = checkPasswordStrength(password);
+      if (!pwCheck.isValid) {
+        throw new Error('Password must be at least 8 characters long and contain letters, numbers, and special characters.');
+      }
+
       if (signupRole === 'HOD') {
         await signup({ hodId: selectedHodId, password, role: 'HOD' });
       } else if (signupRole === 'FACULTY') {
-        if (!name.trim()) throw new Error('Please enter faculty name.');
-        if (!email.trim()) throw new Error('Please enter faculty email.');
+        if (!name.trim()) throw new Error('Please select or enter professor name.');
+        if (!email.trim()) throw new Error('Please provide professor institutional email.');
         await signup({
           name: name.trim(),
           department,
+          designation,
           semester: 5,
           year: 3,
           section: 'A',
@@ -142,6 +213,10 @@ export default function AuthModal() {
           role: 'VIEWER',
           userType: 'Faculty'
         });
+
+        // Sync login dropdowns so newly registered professor immediately appears in login
+        setFacultyDept(department);
+        setSelectedProfEmail(email.trim());
       } else {
         if (!name.trim()) throw new Error('Please enter your full name.');
         if (!email.trim()) throw new Error('Please enter your email address.');
@@ -160,6 +235,52 @@ export default function AuthModal() {
       }
     } catch (err) {
       setError(err.message || 'Registration failed. Please check your inputs.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccessMsg('');
+
+    if (!forgotEmail.trim()) {
+      setError('Please enter your institutional email address.');
+      return;
+    }
+    if (!forgotNewPassword) {
+      setError('Please enter a new password.');
+      return;
+    }
+    const pwCheck = checkPasswordStrength(forgotNewPassword);
+    if (!pwCheck.isValid) {
+      setError('Password must be at least 8 characters long and contain letters, numbers, and special characters.');
+      return;
+    }
+    if (forgotNewPassword !== forgotConfirmPassword) {
+      setError('Passwords do not match. Please re-enter.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await api.forgotPassword({
+        email: forgotEmail.trim(),
+        newPassword: forgotNewPassword
+      });
+      setSuccessMsg(res.message || 'Password reset successfully! Redirecting to sign in...');
+      setTimeout(() => {
+        setEmail(forgotEmail.trim());
+        setSelectedProfEmail(forgotEmail.trim());
+        setAuthModalTab('login');
+        setSuccessMsg('');
+        setError('');
+        setForgotNewPassword('');
+        setForgotConfirmPassword('');
+      }, 2000);
+    } catch (err) {
+      setError(err.message || 'Failed to reset password. Please check the email address.');
     } finally {
       setLoading(false);
     }
@@ -194,7 +315,7 @@ export default function AuthModal() {
           <div className={`flex rounded-xl p-1 mt-4 border ${
             isDark ? 'bg-[#151c2e] border-[#243048]' : 'bg-white border-slate-200'
           }`}>
-            <button onClick={() => { setAuthModalTab('login'); setError(''); }}
+            <button onClick={() => { setAuthModalTab('login'); setError(''); setSuccessMsg(''); }}
               className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
                 authModalTab === 'login' 
                   ? 'bg-blue-600 text-white shadow-md' 
@@ -202,7 +323,7 @@ export default function AuthModal() {
               }`}>
               Sign In
             </button>
-            <button onClick={() => { setAuthModalTab('signup'); setError(''); }}
+            <button onClick={() => { setAuthModalTab('signup'); setError(''); setSuccessMsg(''); }}
               className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
                 authModalTab === 'signup' 
                   ? 'bg-blue-600 text-white shadow-md' 
@@ -214,11 +335,18 @@ export default function AuthModal() {
         </div>
 
         {/* Body */}
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
           {error && (
             <div className="p-3 rounded-xl bg-red-950/60 border border-red-800 text-red-300 text-xs sm:text-sm font-semibold flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-red-400 shrink-0"></span>
               <span>{error}</span>
+            </div>
+          )}
+
+          {successMsg && (
+            <div className="p-3 rounded-xl bg-emerald-950/60 border border-emerald-800 text-emerald-300 text-xs sm:text-sm font-semibold flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>{successMsg}</span>
             </div>
           )}
 
@@ -240,20 +368,20 @@ export default function AuthModal() {
                 <button type="button" onClick={() => { setActivePortal('FACULTY'); setError(''); }}
                   className={`p-2.5 rounded-xl border text-center text-xs flex flex-col items-center gap-1 transition-all ${
                     activePortal === 'FACULTY' 
-                      ? 'border-purple-500 bg-purple-500/15 text-white ring-1 ring-purple-500/50 shadow-md font-bold' 
+                      ? 'border-blue-600 bg-blue-900/30 text-white ring-1 ring-blue-500/50 shadow-md font-bold' 
                       : isDark ? 'border-[#1e293b] text-slate-400 hover:border-[#2f3d58] bg-[#0b0f17]/70' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}>
-                  <Briefcase className="w-4 h-4 text-purple-400" />
+                  <Briefcase className="w-4 h-4 text-blue-400" />
                   <span>Professor</span>
                 </button>
 
                 <button type="button" onClick={() => { setActivePortal('STUDENT'); setError(''); }}
                   className={`p-2.5 rounded-xl border text-center text-xs flex flex-col items-center gap-1 transition-all ${
                     activePortal === 'STUDENT' 
-                      ? 'border-emerald-500 bg-emerald-500/15 text-white ring-1 ring-emerald-500/50 shadow-md font-bold' 
+                      ? 'border-blue-600 bg-blue-900/30 text-white ring-1 ring-blue-500/50 shadow-md font-bold' 
                       : isDark ? 'border-[#1e293b] text-slate-400 hover:border-[#2f3d58] bg-[#0b0f17]/70' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}>
-                  <User className="w-4 h-4 text-emerald-400" />
+                  <User className="w-4 h-4 text-blue-400" />
                   <span>Student</span>
                 </button>
               </div>
@@ -261,7 +389,7 @@ export default function AuthModal() {
               {/* Portal 1: HoD Login */}
               {activePortal === 'HOD' && (
                 <div>
-                  <label className={`block text-xs font-black uppercase tracking-wider mb-1.5 ${isDark ? 'text-cyan-400' : 'text-blue-800'}`}>
+                  <label className={`block text-xs font-black uppercase tracking-wider mb-1.5 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>
                     Select Department HoD
                   </label>
                   <select 
@@ -282,13 +410,13 @@ export default function AuthModal() {
               {activePortal === 'FACULTY' && (
                 <div className="space-y-3">
                   <div>
-                    <label className={`block text-xs font-black uppercase tracking-wider mb-1.5 ${isDark ? 'text-purple-400' : 'text-purple-800'}`}>
+                    <label className={`block text-xs font-black uppercase tracking-wider mb-1.5 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>
                       Step 1: Department
                     </label>
                     <select 
                       value={facultyDept} 
                       onChange={e => handleFacultyDeptChange(e.target.value)}
-                      className={`w-full px-3.5 py-2.5 border rounded-xl text-sm font-bold focus:outline-none focus:border-purple-500 ${
+                      className={`w-full px-3.5 py-2.5 border rounded-xl text-sm font-bold focus:outline-none focus:border-blue-500 ${
                         isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
                       }`}
                     >
@@ -299,13 +427,13 @@ export default function AuthModal() {
                   </div>
 
                   <div>
-                    <label className={`block text-xs font-black uppercase tracking-wider mb-1.5 ${isDark ? 'text-purple-400' : 'text-purple-800'}`}>
+                    <label className={`block text-xs font-black uppercase tracking-wider mb-1.5 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>
                       Step 2: Faculty Member
                     </label>
                     <select 
                       value={selectedProfEmail} 
                       onChange={e => setSelectedProfEmail(e.target.value)}
-                      className={`w-full px-3.5 py-2.5 border rounded-xl text-sm font-bold focus:outline-none focus:border-purple-500 ${
+                      className={`w-full px-3.5 py-2.5 border rounded-xl text-sm font-bold focus:outline-none focus:border-blue-500 ${
                         isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
                       }`}
                     >
@@ -330,7 +458,7 @@ export default function AuthModal() {
                     <input 
                       type="email" 
                       value={email} 
-                      onChange={e => setEmail(e.target.value)}
+                      onChange={e => setEmail(e.target.value)} 
                       placeholder="student.it@nitk.edu.in"
                       className={`w-full pl-10 pr-3.5 py-2.5 border rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 ${
                         isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
@@ -342,15 +470,29 @@ export default function AuthModal() {
 
               {/* Password */}
               <div>
-                <label className={`block text-xs font-black uppercase tracking-wider mb-1.5 ${isDark ? 'text-cyan-400' : 'text-blue-800'}`}>
-                  Password
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className={`block text-xs font-black uppercase tracking-wider ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>
+                    Password
+                  </label>
+                  <button 
+                    type="button" 
+                    onClick={() => { 
+                      setAuthModalTab('forgot'); 
+                      setError(''); 
+                      setSuccessMsg('');
+                      setForgotEmail(activePortal === 'FACULTY' ? selectedProfEmail : (activePortal === 'STUDENT' ? email : ''));
+                    }}
+                    className="text-xs text-blue-400 hover:text-blue-300 font-semibold underline transition-colors"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input 
                     type="password" 
                     value={password} 
-                    onChange={e => setPassword(e.target.value)}
+                    onChange={e => setPassword(e.target.value)} 
                     placeholder="••••••••"
                     className={`w-full pl-10 pr-3.5 py-2.5 border rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 ${
                       isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
@@ -368,18 +510,113 @@ export default function AuthModal() {
                 <ArrowRight className="w-4 h-4" />
               </button>
             </form>
+          ) : authModalTab === 'forgot' ? (
+            /* Forgot Password Sub-View */
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div className="flex items-center gap-2.5 pb-1">
+                <button 
+                  type="button" 
+                  onClick={() => { setAuthModalTab('login'); setError(''); setSuccessMsg(''); }}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <div>
+                  <h3 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>Reset Account Password</h3>
+                  <p className="text-xs text-slate-400">Enter your institutional email and set your new password</p>
+                </div>
+              </div>
+
+              <div>
+                <label className={`block text-xs font-black uppercase tracking-wider mb-1.5 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>
+                  Institutional Email Address
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input 
+                    type="email" 
+                    value={forgotEmail} 
+                    onChange={e => setForgotEmail(e.target.value)} 
+                    placeholder="e.g. professor.dept@nitk.edu.in"
+                    required
+                    className={`w-full pl-10 pr-3.5 py-2.5 border rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 ${
+                      isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
+                    }`} 
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className={`block text-xs font-black uppercase tracking-wider mb-1.5 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>
+                  New Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input 
+                    type="password" 
+                    value={forgotNewPassword} 
+                    onChange={e => setForgotNewPassword(e.target.value)} 
+                    placeholder="Min 8 chars, letters, numbers, symbols"
+                    required
+                    className={`w-full pl-10 pr-3.5 py-2.5 border rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 ${
+                      isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
+                    }`} 
+                  />
+                </div>
+                <PasswordStrengthIndicator password={forgotNewPassword} isDark={isDark} />
+              </div>
+
+              <div>
+                <label className={`block text-xs font-black uppercase tracking-wider mb-1.5 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>
+                  Confirm New Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input 
+                    type="password" 
+                    value={forgotConfirmPassword} 
+                    onChange={e => setForgotConfirmPassword(e.target.value)} 
+                    placeholder="Repeat new password"
+                    required
+                    className={`w-full pl-10 pr-3.5 py-2.5 border rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 ${
+                      isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
+                    }`} 
+                  />
+                </div>
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={loading}
+                className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-black flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 transition-all active:scale-95 disabled:opacity-50"
+              >
+                <KeyRound className="w-4 h-4" />
+                <span>{loading ? 'Updating Password...' : 'Reset Password'}</span>
+              </button>
+
+              <div className="text-center pt-2">
+                <button 
+                  type="button" 
+                  onClick={() => { setAuthModalTab('login'); setError(''); setSuccessMsg(''); }}
+                  className="text-xs text-slate-400 hover:text-white transition-colors"
+                >
+                  Remember your credentials? <span className="text-blue-400 underline font-semibold">Back to Sign In</span>
+                </button>
+              </div>
+            </form>
           ) : (
+            /* Sign Up View */
             <form onSubmit={handleSignup} className="space-y-3.5">
               <div className="grid grid-cols-3 gap-2">
                 <button type="button" onClick={() => setSignupRole('STUDENT')}
                   className={`py-2 px-2 rounded-xl border text-xs font-bold transition-all ${
-                    signupRole === 'STUDENT' ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300' : 'border-slate-700 text-slate-400'
+                    signupRole === 'STUDENT' ? 'border-blue-600 bg-blue-900/30 text-blue-300' : 'border-slate-700 text-slate-400'
                   }`}>
                   Student
                 </button>
                 <button type="button" onClick={() => setSignupRole('FACULTY')}
                   className={`py-2 px-2 rounded-xl border text-xs font-bold transition-all ${
-                    signupRole === 'FACULTY' ? 'border-purple-500 bg-purple-500/20 text-purple-300' : 'border-slate-700 text-slate-400'
+                    signupRole === 'FACULTY' ? 'border-blue-600 bg-blue-900/30 text-blue-300' : 'border-slate-700 text-slate-400'
                   }`}>
                   Professor
                 </button>
@@ -393,7 +630,7 @@ export default function AuthModal() {
 
               {signupRole === 'HOD' ? (
                 <div>
-                  <label className={`block text-xs font-black uppercase tracking-wider mb-1.5 ${isDark ? 'text-cyan-400' : 'text-blue-800'}`}>
+                  <label className={`block text-xs font-black uppercase tracking-wider mb-1.5 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>
                     Select HoD
                   </label>
                   <select value={selectedHodId} onChange={e => setSelectedHodId(e.target.value)}
@@ -403,25 +640,98 @@ export default function AuthModal() {
                     {departmentHods.map(h => <option key={h.id} value={h.id}>{h.name} — HoD, {h.department}</option>)}
                   </select>
                 </div>
+              ) : signupRole === 'FACULTY' ? (
+                /* Professor Sign Up */
+                <div className="space-y-3">
+                  <div>
+                    <label className={`block text-xs font-black uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>
+                      Full Name
+                    </label>
+                    <input 
+                      type="text" 
+                      value={name} 
+                      onChange={e => setName(e.target.value)} 
+                      placeholder="e.g. Sankalp"
+                      required
+                      className={`w-full px-3.5 py-2 border rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 ${
+                        isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
+                      }`} 
+                    />
+                  </div>
+
+                  <div>
+                    <label className={`block text-xs font-black uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>
+                      Institutional Email Address
+                    </label>
+                    <input 
+                      type="email" 
+                      value={email} 
+                      onChange={e => setEmail(e.target.value)} 
+                      placeholder="faculty.dept@nitk.edu.in"
+                      required
+                      className={`w-full px-3.5 py-2 border rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 ${
+                        isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
+                      }`} 
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label className={`block text-xs font-black uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>
+                        Department
+                      </label>
+                      <select 
+                        value={department} 
+                        onChange={e => setDepartment(e.target.value)}
+                        className={`w-full px-3 py-2 border rounded-xl text-sm font-bold focus:outline-none ${
+                          isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
+                        }`}
+                      >
+                        {departments.map(d => (
+                          <option key={d.id} value={d.id}>Dept. of {d.name} ({d.code})</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className={`block text-xs font-black uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>
+                        Designation
+                      </label>
+                      <select 
+                        value={designation} 
+                        onChange={e => setDesignation(e.target.value)}
+                        className={`w-full px-3 py-2 border rounded-xl text-sm font-bold focus:outline-none ${
+                          isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
+                        }`}
+                      >
+                        <option value="Professor">Professor</option>
+                        <option value="Associate Professor">Associate Professor</option>
+                        <option value="Assistant Professor">Assistant Professor</option>
+                        <option value="Temporary Faculty">Temporary Faculty</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
               ) : (
+                /* Student Sign Up */
                 <>
                   <div>
-                    <label className={`block text-xs font-black uppercase tracking-wider mb-1 ${isDark ? 'text-cyan-400' : 'text-blue-800'}`}>Full Name</label>
+                    <label className={`block text-xs font-black uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>Full Name</label>
                     <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Full Name"
                       className={`w-full px-3.5 py-2 border rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 ${
                         isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
                       }`} />
                   </div>
                   <div>
-                    <label className={`block text-xs font-black uppercase tracking-wider mb-1 ${isDark ? 'text-cyan-400' : 'text-blue-800'}`}>Email Address</label>
-                    <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@nitk.edu.in"
+                    <label className={`block text-xs font-black uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>Email Address</label>
+                    <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="student.it@nitk.edu.in"
                       className={`w-full px-3.5 py-2 border rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 ${
                         isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
                       }`} />
                   </div>
                   <div className="flex items-center gap-2.5">
                     <div className="flex-1">
-                      <label className={`block text-xs font-black uppercase tracking-wider mb-1 ${isDark ? 'text-cyan-400' : 'text-blue-800'}`}>Department</label>
+                      <label className={`block text-xs font-black uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>Department</label>
                       <select value={department} onChange={e => setDepartment(e.target.value)}
                         className={`w-full px-2.5 py-2 border rounded-xl text-sm font-bold focus:outline-none ${
                           isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
@@ -429,43 +739,40 @@ export default function AuthModal() {
                         {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                       </select>
                     </div>
-                    {signupRole === 'STUDENT' && (
-                      <>
-                        <div className="w-24">
-                          <label className={`block text-xs font-black uppercase tracking-wider mb-1 ${isDark ? 'text-cyan-400' : 'text-blue-800'}`}>Sem</label>
-                          <select value={semester} onChange={e => setSemester(e.target.value)}
-                            className={`w-full px-2.5 py-2 border rounded-xl text-sm font-bold focus:outline-none ${
-                              isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
-                            }`}>
-                            {SEMESTERS.map(s => <option key={s.id} value={s.value}>{s.label}</option>)}
-                          </select>
-                        </div>
-                        <div className="w-20">
-                          <label className={`block text-xs font-black uppercase tracking-wider mb-1 ${isDark ? 'text-cyan-400' : 'text-blue-800'}`}>Sec</label>
-                          <select value={section} onChange={e => setSection(e.target.value)}
-                            className={`w-full px-2.5 py-2 border rounded-xl text-sm font-bold focus:outline-none ${
-                              isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
-                            }`}>
-                            {SECTIONS.slice(0, 3).map(s => <option key={s} value={s}>{s}</option>)}
-                          </select>
-                        </div>
-                      </>
-                    )}
+                    <div className="w-24">
+                      <label className={`block text-xs font-black uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>Sem</label>
+                      <select value={semester} onChange={e => setSemester(e.target.value)}
+                        className={`w-full px-2.5 py-2 border rounded-xl text-sm font-bold focus:outline-none ${
+                          isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
+                        }`}>
+                        {SEMESTERS.map(s => <option key={s.id} value={s.value}>{s.label}</option>)}
+                      </select>
+                    </div>
+                    <div className="w-20">
+                      <label className={`block text-xs font-black uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>Sec</label>
+                      <select value={section} onChange={e => setSection(e.target.value)}
+                        className={`w-full px-2.5 py-2 border rounded-xl text-sm font-bold focus:outline-none ${
+                          isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
+                        }`}>
+                        {SECTIONS.slice(0, 3).map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
                   </div>
                 </>
               )}
 
               <div>
-                <label className={`block text-xs font-black uppercase tracking-wider mb-1 ${isDark ? 'text-cyan-400' : 'text-blue-800'}`}>Password</label>
-                <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••"
+                <label className={`block text-xs font-black uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>Password</label>
+                <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Min 8 chars, letters, numbers, symbols"
                   className={`w-full px-3.5 py-2 border rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 ${
                     isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
                   }`} />
+                <PasswordStrengthIndicator password={password} isDark={isDark} />
               </div>
 
               <button type="submit" disabled={loading}
                 className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-black flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 transition-all active:scale-95 disabled:opacity-50 mt-2">
-                <span>{loading ? 'Creating...' : 'Create Account'}</span>
+                <span>{loading ? 'Creating Account...' : 'Create Account'}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </form>

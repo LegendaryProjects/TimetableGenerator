@@ -42,7 +42,7 @@ export default function ExportPdfButton({ timetable }) {
         </>
       ) : done ? (
         <>
-          <Check className="w-4 h-4 text-emerald-300" />
+          <Check className="w-4 h-4 text-blue-200" />
           <span>Downloaded</span>
         </>
       ) : (

@@ -237,3 +237,28 @@ class LogFile(db.Model):
             'message': self.message,
             'errorCode': self.error_code
         }
+
+
+class PasswordResetOTP(db.Model):
+    """
+    Security OTP Store for Password Reset
+    """
+    __tablename__ = 'password_reset_otps'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    email = db.Column(db.String(120), nullable=False, index=True)
+    otp_hash = db.Column(db.String(64), nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    attempts = db.Column(db.Integer, nullable=False, default=0)
+    used = db.Column(db.Boolean, nullable=False, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'email': self.email,
+            'expiresAt': self.expires_at.isoformat() if self.expires_at else None,
+            'attempts': self.attempts,
+            'used': self.used
+        }
+

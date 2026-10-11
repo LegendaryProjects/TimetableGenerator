@@ -73,10 +73,24 @@ export const api = {
     return request('/auth/hods');
   },
 
-  async forgotPassword({ email, newPassword }) {
-    return request('/auth/forgot-password', {
+  async sendOtp({ email }) {
+    return request('/auth/send-otp', {
       method: 'POST',
-      body: JSON.stringify({ email, newPassword })
+      body: JSON.stringify({ email })
+    });
+  },
+
+  async verifyAndResetPassword({ email, otp, newPassword }) {
+    return request('/auth/verify-and-reset', {
+      method: 'POST',
+      body: JSON.stringify({ email, otp, newPassword })
+    });
+  },
+
+  async forgotPassword({ email, otp, newPassword }) {
+    return request('/auth/verify-and-reset', {
+      method: 'POST',
+      body: JSON.stringify({ email, otp, newPassword })
     });
   },
 

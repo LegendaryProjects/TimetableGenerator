@@ -3,6 +3,12 @@ Automated College Timetable Generator - Main Flask Application Server
 Compliant with RESTful architecture, JWT RBAC, SQLAlchemy ORM, and modular routing.
 """
 
+import os
+from dotenv import load_dotenv
+
+# Load environment configuration from .env file
+load_dotenv()
+
 from flask import Flask, jsonify
 from flask_cors import CORS
 from backend.database import db, init_db

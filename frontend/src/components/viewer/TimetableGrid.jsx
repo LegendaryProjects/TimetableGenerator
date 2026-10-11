@@ -32,7 +32,8 @@ export default function TimetableGrid() {
     setIsEditingHodStudio,
     departments,
     professors,
-    workingDays
+    workingDays,
+    classrooms
   } = useTimetable();
   const { isHod } = useAuth();
   const { isDark } = useTheme();
@@ -41,6 +42,11 @@ export default function TimetableGrid() {
   const deptObj = departments.find(d => d.id === selectedDepartment) || { id: selectedDepartment, name: selectedDepartment };
   const facultyObj = professors.find(p => p.id === selectedFacultyId);
   const isFacultyView = viewMode === 'faculty';
+
+  const assignedCRId = timetable?.assignedClassroom || timetable?.assigned_classroom;
+  const assignedCRName = assignedCRId
+    ? (classrooms?.find(c => c.id === assignedCRId || c.name === assignedCRId)?.name || assignedCRId)
+    : null;
 
   if (!timetable) {
     return (
@@ -56,7 +62,7 @@ export default function TimetableGrid() {
           </h2>
           <p className={`text-sm max-w-sm mx-auto leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
             {isHod
-              ? `Configure constraints in HoD Studio to generate schedules for ${deptObj.name}.`
+              ? `Configure constraints in HoD Dashboard to generate schedules for the department.`
               : `The academic timetable for Semester ${selectedSemester || 5} Section ${selectedSection} is not published yet.`}
           </p>
         </div>
@@ -66,7 +72,7 @@ export default function TimetableGrid() {
             className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold inline-flex items-center gap-2 shadow-sm transition-all"
           >
             <Sliders className="w-4 h-4" />
-            <span>Open HoD Studio</span>
+            <span>Open HoD Dashboard</span>
           </button>
         )}
       </div>
@@ -132,6 +138,11 @@ export default function TimetableGrid() {
                   ? `Teaching Schedule • Department of ${deptObj.name}`
                   : `Department of ${deptObj.name} • Class Timetable`}
               </p>
+              {!isFacultyView && assignedCRName && (
+                <p className={`text-xs sm:text-sm font-semibold mt-0.5 ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                  Classroom: {assignedCRName}
+                </p>
+              )}
             </div>
           </div>
 
@@ -145,14 +156,14 @@ export default function TimetableGrid() {
               }`}
             >
               <Sliders className="w-4 h-4 text-blue-500" />
-              <span>HoD Studio</span>
+              <span>HoD Dashboard</span>
             </button>
           )}
         </div>
 
         {/* Timetable Table Grid with Strict Mathematically Fixed Columns */}
         <div className="p-3 sm:p-5 overflow-x-auto">
-          <table className="w-full min-w-[1200px] table-fixed border-collapse">
+          <table className="w-full min-w-[1450px] table-fixed border-collapse">
             <colgroup>
               <col className="w-24" />
               <col className="w-[8.5%]" />
@@ -169,7 +180,7 @@ export default function TimetableGrid() {
             </colgroup>
             <thead>
               <tr className={`border-b ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
-                <th className="p-2.5 text-left text-xs font-black uppercase tracking-wider text-slate-400">
+                <th className="p-2.5 text-left text-xs sm:text-sm font-black uppercase tracking-wider text-slate-400">
                   Day
                 </th>
                 {PERIODS.map(p => (
@@ -180,11 +191,8 @@ export default function TimetableGrid() {
                         : isDark ? 'text-slate-100' : 'text-slate-800'
                     }`}>
                       {p.label}
-                      {p.id === 1 && (
-                        <span className="text-[9px] font-medium text-slate-400 block">No Classes</span>
-                      )}
                     </div>
-                    <div className="text-[11px] font-mono text-slate-400 mt-0.5 font-medium">
+                    <div className="text-xs font-mono text-slate-400 mt-0.5 font-medium">
                       {p.time}
                     </div>
                   </th>
@@ -197,12 +205,9 @@ export default function TimetableGrid() {
                   isDark ? 'border-slate-800/60' : 'border-slate-100'
                 }`}>
                   <td className="p-2.5 align-middle">
-                    <span className={`text-sm font-black uppercase tracking-wider block ${
+                    <span className={`text-sm font-bold tracking-wide block ${
                       isDark ? 'text-slate-200' : 'text-slate-800'
                     }`}>
-                      {day.slice(0, 3)}
-                    </span>
-                    <span className="text-xs text-slate-400 font-medium">
                       {day}
                     </span>
                   </td>
@@ -212,14 +217,13 @@ export default function TimetableGrid() {
                     if (p.isBreak) {
                       return (
                         <td key={p.id} className="p-1">
-                          <div className={`min-h-[94px] h-full w-full rounded-xl border border-dashed flex flex-col items-center justify-center text-center p-1.5 select-none ${
+                          <div className={`min-h-[105px] h-full w-full rounded-xl border border-dashed flex flex-col items-center justify-center text-center p-1.5 select-none ${
                             isDark 
                               ? 'bg-blue-950/20 border-blue-900/40 text-blue-300' 
                               : 'bg-slate-100/90 border-slate-300 text-slate-700'
                           }`}>
-                            <Clock className="w-4 h-4 mb-1 text-blue-400" />
-                            <span className="text-xs font-black uppercase tracking-wider text-blue-400">Lunch</span>
-                            <span className="text-[10px] font-mono text-slate-400 mt-0.5 font-medium">11:45-13:00</span>
+                            <span className="text-xs font-black uppercase tracking-wider text-blue-400">LUNCH BREAK</span>
+                            <span className="text-[11px] font-mono text-slate-400 mt-0.5 font-medium">11:45-13:00</span>
                           </div>
                         </td>
                       );

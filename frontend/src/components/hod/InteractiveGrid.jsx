@@ -3,7 +3,7 @@ import { useTimetable } from '../../context/TimetableContext';
 import { useTheme } from '../../context/ThemeContext';
 import TimetableSlot from '../viewer/TimetableSlot';
 import {
-  ArrowLeftRight, CheckCircle2, Clock, X, Shuffle, Undo2, Layers, AlertCircle, Check, Trash2
+  ArrowLeftRight, CheckCircle2, Clock, X, Shuffle, Undo2, Layers, AlertCircle, Check, Trash2, Calendar
 } from 'lucide-react';
 
 const PERIODS = [
@@ -23,7 +23,7 @@ const PERIODS = [
 export default function InteractiveGrid() {
   const {
     timetables, currentHodTimetable, swapSlots, approveTimetable, revertTimetable, deleteTimetable,
-    selectedDepartment, notify, departments, workingDays
+    selectedDepartment, notify, departments, workingDays, classrooms
   } = useTimetable();
   const { isDark } = useTheme();
 
@@ -37,86 +37,235 @@ export default function InteractiveGrid() {
     ? deptTimetables.find(t => t.id === targetTimetableId) || timetable
     : timetable;
 
+  const assignedCRId = displayedTimetable?.assignedClassroom || displayedTimetable?.assigned_classroom;
+  const assignedCRName = assignedCRId
+    ? (classrooms?.find(c => c.id === assignedCRId || c.name === assignedCRId)?.name || assignedCRId)
+    : null;
+
+  // Helper to extract a contiguous laboratory block around a given slot
+  const getSlotLabBlock = (tt, day, slotId) => {
+    if (!tt?.grid?.[day]) return null;
+    const numSlotId = Number(slotId);
+    if (isNaN(numSlotId)) return null;
+
+    const cell = tt.grid[day][numSlotId];
+    if (!cell || (!cell.isLab && cell.type !== 'lab')) return null;
+
+    const validPeriods = [2, 3, 4, 5, 6, 7, 8, 9, 10];
+    const isMatchingLab = (other) => {
+      if (!other || (!other.isLab && other.type !== 'lab')) return false;
+      if (cell.labInstanceId && other.labInstanceId) {
+        return cell.labInstanceId === other.labInstanceId;
+      }
+      return cell.subjectCode === other.subjectCode;
+    };
+
+    let startP = numSlotId;
+    while (validPeriods.includes(startP - 1) && isMatchingLab(tt.grid[day][startP - 1])) {
+      startP--;
+    }
+    let endP = numSlotId;
+    while (validPeriods.includes(endP + 1) && isMatchingLab(tt.grid[day][endP + 1])) {
+      endP++;
+    }
+
+    const periods = [];
+    for (let p = startP; p <= endP; p++) {
+      periods.push(p);
+    }
+
+    return {
+      isLab: true,
+      day,
+      startSlot: startP,
+      endSlot: endP,
+      duration: periods.length,
+      periods,
+      subjectCode: cell.subjectCode,
+      subjectName: cell.subjectName || cell.title || cell.subjectCode,
+      labInstanceId: cell.labInstanceId,
+      cell
+    };
+  };
+
   // Check if swapping with (targetDay, targetSlotId) will create a collision
   const checkSwapConflict = (targetDay, targetSlotId) => {
-    if (!selectedSource) return false;
+    if (!selectedSource) return { conflict: false };
+    const numTargetSlot = Number(targetSlotId);
+    if (isNaN(numTargetSlot)) return { conflict: true, reason: 'Invalid slot' };
+
     // HARD CONSTRAINT: Institutional policy strictly forbids classes between 08:00 - 09:00 AM (Period 1)
-    if (targetSlotId === 1 || targetSlotId === '1') {
-      return true;
-    }
-    const actualTargetTimetableId = targetTimetableId || displayedTimetable.id;
-
-    if (selectedSource.timetableId === actualTargetTimetableId && selectedSource.day === targetDay && selectedSource.slotId === targetSlotId) {
-      return false;
+    if (numTargetSlot === 1) {
+      return { conflict: true, reason: 'Classes from 08:00 - 09:00 AM (Period 1) are strictly prohibited.' };
     }
 
+    const actualTargetTimetableId = targetTimetableId || displayedTimetable?.id;
     const sourceTT = timetables.find(t => t.id === selectedSource.timetableId);
     const targetTT = timetables.find(t => t.id === actualTargetTimetableId);
-    if (!sourceTT || !targetTT) return false;
+    if (!sourceTT || !targetTT) return { conflict: false };
 
-    const sourceData = selectedSource.data;
-    const targetData = targetTT.grid?.[targetDay]?.[targetSlotId] || null;
+    const isSourceLab = !!selectedSource.labBlock;
+    const duration = isSourceLab ? selectedSource.duration : 1;
+    const sourcePeriods = selectedSource.periods || [Number(selectedSource.slotId)];
+    const targetPeriods = Array.from({ length: duration }, (_, i) => numTargetSlot + i);
 
-    // Check if sourceData at (targetDay, targetSlotId) clashes with any other section
-    if (sourceData) {
-      for (const tt of timetables) {
-        if (tt.department !== targetTT.department) continue;
-        if (tt.id === selectedSource.timetableId) continue;
+    // 1. Check if same exact slot/block is selected
+    if (selectedSource.timetableId === actualTargetTimetableId && selectedSource.day === targetDay) {
+      if (sourcePeriods.includes(numTargetSlot)) {
+        return { conflict: false };
+      }
+    }
 
-        const otherSlot = tt.grid?.[targetDay]?.[targetSlotId];
-        if (otherSlot && tt.id !== actualTargetTimetableId) {
-          if (otherSlot.facultyId === sourceData.facultyId || otherSlot.roomId === sourceData.roomId) {
-            return true;
+    // 2. Check block boundaries
+    if (Math.max(...targetPeriods) > 10) {
+      return { conflict: true, reason: `A ${duration}-hour laboratory block cannot extend past Period 10 (18:45).` };
+    }
+    if (targetPeriods.includes(1)) {
+      return { conflict: true, reason: 'Classes in Period 1 are strictly prohibited.' };
+    }
+
+    // 3. Check Lunch Break boundary (Periods <= 4 vs Periods >= 5)
+    const hasMorning = targetPeriods.some(p => p <= 4);
+    const hasAfternoon = targetPeriods.some(p => p >= 5);
+    if (hasMorning && hasAfternoon) {
+      return { conflict: true, reason: 'A laboratory block cannot cross the 11:45-13:00 lunch break.' };
+    }
+
+    // 4. Lab integrity checks
+    if (!isSourceLab) {
+      // Source is a single theory slot. Target cannot be part of a multi-hour lab block!
+      const targetLab = getSlotLabBlock(targetTT, targetDay, numTargetSlot);
+      if (targetLab && targetLab.duration > 1) {
+        return {
+          conflict: true,
+          reason: `Cannot swap a 1-hour lecture with a ${targetLab.duration}-hour laboratory block (${targetLab.subjectCode}). Either move the whole lab block or swap individual lectures.`
+        };
+      }
+    } else {
+      // Source is a lab block. Target must NOT partially split any existing lab block!
+      for (const tp of targetPeriods) {
+        const tLab = getSlotLabBlock(targetTT, targetDay, tp);
+        if (tLab) {
+          const allInside = tLab.periods.every(p => targetPeriods.includes(p));
+          if (!allInside) {
+            return {
+              conflict: true,
+              reason: `Cannot split existing ${tLab.duration}-hour laboratory block (${tLab.subjectCode}) at Period ${tp}.`
+            };
           }
         }
       }
     }
 
-    // Check if targetData at (source.day, source.slotId) clashes with any other section
-    if (targetData) {
-      for (const tt of timetables) {
-        if (tt.department !== sourceTT.department) continue;
-        if (tt.id === actualTargetTimetableId) continue;
+    // 5. Zero-collision verification across other timetables
+    for (let i = 0; i < duration; i++) {
+      const sp = sourcePeriods[i];
+      const tp = targetPeriods[i];
+      const sourceData = sourceTT.grid?.[selectedSource.day]?.[sp] || null;
+      const targetData = targetTT.grid?.[targetDay]?.[tp] || null;
 
-        const otherSlot = tt.grid?.[selectedSource.day]?.[selectedSource.slotId];
-        if (otherSlot && tt.id !== selectedSource.timetableId) {
-          if (otherSlot.facultyId === targetData.facultyId || otherSlot.roomId === targetData.roomId) {
-            return true;
+      if (sourceData) {
+        for (const tt of timetables) {
+          if (tt.department !== targetTT.department) continue;
+          if (tt.id === selectedSource.timetableId && selectedSource.day === targetDay && sourcePeriods.includes(tp)) continue;
+
+          const otherSlot = tt.grid?.[targetDay]?.[tp];
+          if (otherSlot && tt.id !== actualTargetTimetableId) {
+            if (sourceData.facultyId && otherSlot.facultyId === sourceData.facultyId) {
+              return { conflict: true, reason: `Faculty Conflict: ${sourceData.facultyName} is occupied in Sec ${tt.section} at Period ${tp}.` };
+            }
+            if (sourceData.roomId && otherSlot.roomId === sourceData.roomId) {
+              return { conflict: true, reason: `Room Conflict: ${sourceData.roomName || 'Lab'} is occupied by Sec ${tt.section} at Period ${tp}.` };
+            }
+          }
+        }
+      }
+
+      if (targetData) {
+        for (const tt of timetables) {
+          if (tt.department !== sourceTT.department) continue;
+          if (tt.id === actualTargetTimetableId && selectedSource.day === targetDay && targetPeriods.includes(sp)) continue;
+
+          const otherSlot = tt.grid?.[selectedSource.day]?.[sp];
+          if (otherSlot && tt.id !== selectedSource.timetableId) {
+            if (targetData.facultyId && otherSlot.facultyId === targetData.facultyId) {
+              return { conflict: true, reason: `Faculty Conflict: ${targetData.facultyName} is occupied in Sec ${tt.section} on ${selectedSource.day} Period ${sp}.` };
+            }
+            if (targetData.roomId && otherSlot.roomId === targetData.roomId) {
+              return { conflict: true, reason: `Room Conflict: ${targetData.roomName || 'Lab'} is occupied by Sec ${tt.section} on ${selectedSource.day} Period ${sp}.` };
+            }
           }
         }
       }
     }
 
-    return false;
+    return { conflict: false };
   };
 
   const handleSlotClick = (day, slotId) => {
-    if (slotId === 1 || slotId === '1') {
+    const numSlotId = Number(slotId);
+    if (numSlotId === 1) {
       notify('Classes from 08:00 - 09:00 AM (Period 1) are strictly prohibited.', 'warning');
       return;
     }
-    const clickedData = displayedTimetable?.grid?.[day]?.[slotId] || null;
+    const clickedData = displayedTimetable?.grid?.[day]?.[numSlotId] || null;
+
     if (!selectedSource) {
       if (!clickedData) return;
+      const labBlock = getSlotLabBlock(displayedTimetable, day, numSlotId);
       setSelectedSource({
-        timetableId: displayedTimetable.id, year: displayedTimetable.year,
-        section: displayedTimetable.section, day, slotId, data: clickedData
+        timetableId: displayedTimetable?.id,
+        year: displayedTimetable?.year,
+        section: displayedTimetable?.section,
+        day,
+        slotId: labBlock ? labBlock.startSlot : numSlotId,
+        data: clickedData,
+        labBlock,
+        periods: labBlock ? labBlock.periods : [numSlotId],
+        duration: labBlock ? labBlock.duration : 1
       });
-      setTargetTimetableId(displayedTimetable.id);
+      setTargetTimetableId(displayedTimetable?.id);
     } else {
-      const actualTarget = targetTimetableId || displayedTimetable.id;
-      if (selectedSource.timetableId === actualTarget && selectedSource.day === day && selectedSource.slotId === slotId) {
-        setSelectedSource(null); setTargetTimetableId(null); return;
-      }
+      const actualTarget = targetTimetableId || displayedTimetable?.id;
+      const isSameSource = selectedSource.timetableId === actualTarget && selectedSource.day === day && (
+        selectedSource.periods ? selectedSource.periods.includes(numSlotId) : selectedSource.slotId === numSlotId
+      );
 
-      const hasConflict = checkSwapConflict(day, slotId);
-      if (hasConflict) {
-        notify('Cannot swap here: Faculty or Classroom is already occupied in another section.', 'warning');
+      if (isSameSource) {
+        setSelectedSource(null);
+        setTargetTimetableId(null);
         return;
       }
 
-      swapSlots(selectedSource.timetableId, { day: selectedSource.day, slotId: selectedSource.slotId }, actualTarget, { day, slotId });
-      setSelectedSource(null); setTargetTimetableId(null);
+      const conflictCheck = checkSwapConflict(day, numSlotId);
+      if (conflictCheck.conflict) {
+        notify(conflictCheck.reason || 'Cannot swap here: Collision or invalid block configuration.', 'warning');
+        return;
+      }
+
+      const isSourceLab = !!selectedSource.labBlock;
+      const duration = isSourceLab ? selectedSource.duration : 1;
+      const targetPeriods = Array.from({ length: duration }, (_, i) => numSlotId + i);
+
+      swapSlots(
+        selectedSource.timetableId,
+        {
+          day: selectedSource.day,
+          slotId: selectedSource.slotId,
+          periods: selectedSource.periods,
+          duration: selectedSource.duration
+        },
+        actualTarget,
+        {
+          day,
+          slotId: numSlotId,
+          periods: targetPeriods,
+          duration
+        }
+      );
+
+      setSelectedSource(null);
+      setTargetTimetableId(null);
     }
   };
 
@@ -126,12 +275,12 @@ export default function InteractiveGrid() {
         isDark ? 'bg-[#0f172a] border-[#1e293b]' : 'bg-white border-slate-200'
       }`}>
         <div className="w-12 h-12 rounded-xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-500 mx-auto">
-          <Layers className="w-6 h-6" />
+          <Calendar className="w-6 h-6" />
         </div>
         <h3 className={`text-base font-bold mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
           No Timetable Selected
         </h3>
-        <p className={`text-xs max-w-sm mx-auto leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+        <p className={`text-xs whitespace-nowrap mx-auto leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
           Select or generate a draft schedule to start editing and swapping slots.
         </p>
       </div>
@@ -180,8 +329,13 @@ export default function InteractiveGrid() {
                 {displayedTimetable.status}
               </span>
             </div>
+            {assignedCRName && (
+              <p className={`text-xs font-semibold mt-0.5 ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                Classroom: {assignedCRName}
+              </p>
+            )}
             <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              {isDraft ? 'Click any class then click target slot to swap' : 'Published Active Schedule'}
+              {isDraft ? 'Click to swap' : 'Published Schedule'}
             </p>
           </div>
         </div>
@@ -245,6 +399,11 @@ export default function InteractiveGrid() {
               <span className="text-slate-400">
                 (Sem {selectedSource.data?.semester || ((selectedSource.year * 2) - 1)} Sec {selectedSource.section} • {selectedSource.day} Period {selectedSource.slotId})
               </span>
+              {selectedSource.labBlock && (
+                <span className="text-[11px] px-2 py-0.5 rounded font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40">
+                  {selectedSource.duration}-Hour Laboratory Block (Periods {selectedSource.labBlock.startSlot}–{selectedSource.labBlock.endSlot})
+                </span>
+              )}
             </div>
             <button 
               onClick={() => { setSelectedSource(null); setTargetTimetableId(null); }}
@@ -289,9 +448,9 @@ export default function InteractiveGrid() {
       <div className={`border rounded-2xl p-3 sm:p-4 overflow-x-auto shadow-sm transition-colors ${
         isDark ? 'bg-[#0f172a] border-[#1e293b]' : 'bg-white border-slate-200'
       }`}>
-        <table className="w-full min-w-[1150px] table-fixed border-collapse">
+        <table className="w-full min-w-[1450px] table-fixed border-collapse">
           <colgroup>
-            <col className="w-20" />
+            <col className="w-24" />
             <col className="w-[8.5%]" />
             <col className="w-[8.5%]" />
             <col className="w-[8.5%]" />
@@ -306,22 +465,19 @@ export default function InteractiveGrid() {
           </colgroup>
           <thead>
             <tr className={`border-b ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
-              <th className="p-2 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
+              <th className="p-2.5 text-left text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-400">
                 Day
               </th>
               {PERIODS.map(p => (
-                <th key={p.id} className="p-2 text-center">
-                  <div className={`text-xs font-bold ${
+                <th key={p.id} className="p-2.5 text-center">
+                  <div className={`text-xs sm:text-sm font-bold ${
                     p.isBreak 
                       ? isDark ? 'text-blue-400' : 'text-blue-700'
                       : isDark ? 'text-slate-200' : 'text-slate-800'
                   }`}>
                     {p.label}
-                    {p.id === 1 && (
-                      <span className="text-[9px] font-medium text-slate-400 block">No Classes</span>
-                    )}
                   </div>
-                  <div className="text-[10px] font-mono text-slate-500 mt-0.5">
+                  <div className="text-xs font-mono text-slate-400 mt-0.5">
                     {p.time}
                   </div>
                 </th>
@@ -333,13 +489,10 @@ export default function InteractiveGrid() {
               <tr key={day} className={`border-b last:border-b-0 ${
                 isDark ? 'border-slate-800/60' : 'border-slate-100'
               }`}>
-                <td className="p-2 align-middle">
-                  <span className={`text-xs font-bold uppercase tracking-wider block ${
-                    isDark ? 'text-slate-300' : 'text-slate-700'
+                <td className="p-2.5 align-middle">
+                  <span className={`text-sm font-bold tracking-wide block ${
+                    isDark ? 'text-slate-200' : 'text-slate-800'
                   }`}>
-                    {day.slice(0, 3)}
-                  </span>
-                  <span className="text-[10px] text-slate-500 font-medium">
                     {day}
                   </span>
                 </td>
@@ -349,14 +502,13 @@ export default function InteractiveGrid() {
                   if (p.isBreak) {
                     return (
                       <td key={p.id} className="p-1">
-                        <div className={`h-[88px] w-full rounded-lg border border-dashed flex flex-col items-center justify-center text-center p-1 select-none ${
+                        <div className={`min-h-[105px] h-full w-full rounded-xl border border-dashed flex flex-col items-center justify-center text-center p-1.5 select-none ${
                           isDark 
                             ? 'bg-blue-950/20 border-blue-900/40 text-blue-300' 
                             : 'bg-slate-100/90 border-slate-300 text-slate-700'
                         }`}>
-                          <Clock className="w-3.5 h-3.5 mb-1 text-blue-400" />
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-blue-400">Lunch</span>
-                          <span className="text-[9px] font-mono text-slate-400 mt-0.5">11:45-13:00</span>
+                          <span className="text-xs font-bold uppercase tracking-wider text-blue-400">LUNCH BREAK</span>
+                          <span className="text-[11px] font-mono text-slate-400 mt-0.5">11:45-13:00</span>
                         </div>
                       </td>
                     );
@@ -392,10 +544,13 @@ export default function InteractiveGrid() {
                       }
                     }
                   }
-                  const isSelected = selectedSource && selectedSource.timetableId === displayedTimetable.id && selectedSource.day === day && selectedSource.slotId === p.id;
+                  const isSelected = selectedSource && selectedSource.timetableId === displayedTimetable.id && selectedSource.day === day && (
+                    selectedSource.periods ? selectedSource.periods.includes(p.id) : selectedSource.slotId === p.id
+                  );
                   
                   // Conflict checking: if swapping with this slot causes collision, highlight in RED
-                  const isConflict = selectedSource && !isSelected && checkSwapConflict(day, p.id);
+                  const conflictCheck = selectedSource && !isSelected ? checkSwapConflict(day, p.id) : null;
+                  const isConflict = conflictCheck ? conflictCheck.conflict : false;
                   const isSwapTarget = selectedSource && !isSelected && !isConflict;
 
                   return (

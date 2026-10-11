@@ -46,13 +46,16 @@ def parse_lab_hours(subj, cfg=None):
     Extracts laboratory duration in hours (bounded between 2 and 6 hours).
     Checks user configuration first, then LTP practical component e.g. '(0-0-3)' -> 3.
     """
-    if cfg and cfg.get('labHours'):
+    if cfg and cfg.get('labHours') is not None:
         try:
-            return max(2, min(6, int(cfg['labHours'])))
+            val = int(cfg['labHours'])
+            if val > 0:
+                return max(2, min(6, val))
+            return 0
         except (ValueError, TypeError):
             pass
 
-    ltp = subj.ltp or ''
+    ltp = getattr(subj, 'ltp', '') or ''
     try:
         clean = ltp.replace('(', '').replace(')', '').strip()
         parts = clean.split('-')
@@ -64,7 +67,7 @@ def parse_lab_hours(subj, cfg=None):
     except Exception:
         pass
 
-    if subj.credits <= 2:
+    if getattr(subj, 'credits', 3) <= 2:
         return 2 if subj.credits == 1 else 3
     return 3
 
@@ -73,17 +76,40 @@ def is_lab_subject(subj, cfg=None):
     """
     Determines if a course requires a laboratory session.
     """
-    if cfg and cfg.get('requiresLab') is not None:
-        return bool(cfg.get('requiresLab'))
-    if subj.type == 'lab' or subj.requires_lab:
+    if cfg:
+        if cfg.get('labHours') is not None:
+            try:
+                if int(cfg['labHours']) > 0:
+                    return True
+                if int(cfg['labHours']) == 0:
+                    return False
+            except (ValueError, TypeError):
+                pass
+        if cfg.get('requiresLab') is not None:
+            return bool(cfg['requiresLab'])
+
+    if getattr(subj, 'type', None) == 'lab' or getattr(subj, 'requires_lab', False):
         return True
-    code = (subj.code or '').upper()
-    name = (subj.name or '').lower()
+
+    ltp = getattr(subj, 'ltp', '') or ''
+    try:
+        clean = ltp.replace('(', '').replace(')', '').strip()
+        parts = clean.split('-')
+        if len(parts) >= 3:
+            p_val = int(parts[2].strip().split()[0])
+            if p_val > 0:
+                return True
+    except Exception:
+        pass
+
+    code = (getattr(subj, 'code', None) or '').upper()
+    name = (getattr(subj, 'name', None) or '').lower()
     if 'lab' in name or 'laboratory' in name or 'simulation' in name or 'practice' in name:
         return True
     if code.endswith('P') or code.endswith('L'):
         return True
     return False
+
 
 
 class TimetableConstraintEngine:
@@ -347,9 +373,25 @@ class TimetableConstraintEngine:
         theory_tasks = []
 
         for subj in subjects:
-            cfg = (subject_settings or {}).get(subj.id, {})
+            cfg = (subject_settings or {}).get(subj.id) or (subject_settings or {}).get(subj.code) or {}
             prof_id = cfg.get('facultyId') or subj.default_faculty_id
+            
+            # Cross-department IT <-> AI normalization
+            if self.department == 'AI' and prof_id and prof_id.startswith('it_p') and not prof_id.startswith('ai_it_p'):
+                ai_equiv = f"ai_{prof_id}"
+                if Professor.query.get(ai_equiv):
+                    prof_id = ai_equiv
+            elif self.department == 'IT' and prof_id and prof_id.startswith('ai_it_p'):
+                it_equiv = prof_id.replace('ai_', '')
+                if Professor.query.get(it_equiv):
+                    prof_id = it_equiv
+
             prof = Professor.query.get(prof_id) if prof_id else None
+            if not prof and prof_id:
+                prof = Professor.query.filter(
+                    (Professor.name.ilike(f"%{prof_id}%")) | 
+                    (Professor.id.ilike(f"%{prof_id}%"))
+                ).first()
             if not prof:
                 prof = subj.default_faculty or fallback_prof
             p_id = prof.id if prof else f'prof_{self.department}_1'
@@ -357,19 +399,41 @@ class TimetableConstraintEngine:
 
             if is_lab_subject(subj, cfg):
                 hours = parse_lab_hours(subj, cfg)
-                lab_tasks.append({
-                    'subject': subj,
-                    'hours': hours,
-                    'facultyId': p_id,
-                    'facultyName': p_name,
-                    'cfg': cfg
-                })
+                if hours > 0:
+                    lab_tasks.append({
+                        'subject': subj,
+                        'hours': hours,
+                        'facultyId': p_id,
+                        'facultyName': p_name,
+                        'cfg': cfg
+                    })
                 # If subject is a hybrid course (e.g. 3-0-2), it also has theory hours
-                if subj.type != 'lab' and subj.classes_per_week and subj.classes_per_week > 0:
-                    t_hours = cfg.get('theoryHours') or subj.classes_per_week
+                t_hours = None
+                if cfg and 'theoryHours' in cfg and cfg['theoryHours'] is not None:
+                    try:
+                        t_hours = int(cfg['theoryHours'])
+                    except (ValueError, TypeError):
+                        t_hours = None
+                if t_hours is None:
+                    ltp = getattr(subj, 'ltp', '') or ''
+                    try:
+                        clean = ltp.replace('(', '').replace(')', '').strip()
+                        parts = clean.split('-')
+                        if len(parts) >= 2:
+                            l_val = int(parts[0].strip().split()[0])
+                            t_val = int(parts[1].strip().split()[0])
+                            t_hours = l_val + t_val
+                    except Exception:
+                        pass
+                if t_hours is None:
+                    if getattr(subj, 'type', None) == 'lab':
+                        t_hours = 0
+                    else:
+                        t_hours = subj.classes_per_week or (4 if subj.credits >= 4 else 3)
+                if t_hours and int(t_hours) > 0:
                     theory_tasks.append({
                         'subject': subj,
-                        'hours': t_hours,
+                        'hours': int(t_hours),
                         'facultyId': p_id,
                         'facultyName': p_name,
                         'cfg': cfg
@@ -393,92 +457,102 @@ class TimetableConstraintEngine:
             hours = task['hours']
             p_id = task['facultyId']
             p_name = task['facultyName']
+            task_cfg = task.get('cfg', {})
 
             placed = False
             day_order = list(DAYS)
             shift = (hash(subj.id) + ord(section[0])) % len(day_order)
             staggered_days = day_order[shift:] + day_order[:shift]
 
-            # Determine viable starting periods in afternoon:
-            # 6-hour labs start at period 5 (13:00) so block [5..10] fits <= 10
-            # 5-hour labs start at period 6 (14:00) or 5 (13:00)
-            # 2-4 hour labs start at period 6 (14:00), 7 (15:00), or 5 (13:00)
+            # Viable starting periods in afternoon:
             if hours >= 6:
                 lab_start_periods = [5]
             elif hours == 5:
                 lab_start_periods = [6, 5]
-            else:
+            elif hours == 4:
                 lab_start_periods = [6, 7, 5]
+            elif hours == 3:
+                lab_start_periods = [6, 7, 8, 5]
+            else:
+                lab_start_periods = [6, 7, 8, 9, 5]
 
-            for day in staggered_days:
-                # Max 1 lab per section per day to prevent student burnout
-                if any(grid[day][p] is not None and grid[day][p].get('isLab') for p in PERIODS):
-                    continue
-
-                for start_p in lab_start_periods:
-                    block_periods = list(range(start_p, start_p + hours))
-                    # Ensure all periods in block are within valid range <= 10 and exclude period 1
-                    if max(block_periods) > 10 or 1 in block_periods:
-                        continue
-
-                    # 1. Section must be free across all periods
-                    if not all(grid[day][p] is None for p in block_periods):
-                        continue
-
-                    # 2. Professor must be free across all periods
-                    if not all(p_id not in prof_schedule[day][p] for p in block_periods):
-                        continue
-
-                    # 3. Find an available laboratory room (UG-CY-1..6 for CY, UG-PH-1..6 for PH, UG-<DEPT>-1..6 for departmental)
-                    course_labs = self._get_labs_for_course(subj)
-                    if selected_labs:
-                        sel_ids = {l.id if hasattr(l, 'id') else (l.get('id') if isinstance(l, dict) else str(l)) for l in selected_labs}
-                        filtered_cl = [l for l in course_labs if l.id in sel_ids or l.code in sel_ids]
-                        if filtered_cl:
-                            course_labs = filtered_cl
-
-                    # If HoD explicitly selected a specific lab room for this course
-                    cfg_lab = cfg.get('labRoomId') if cfg else None
-                    if cfg_lab and cfg_lab != 'auto':
-                        specific_labs = [l for l in course_labs if l.id == cfg_lab or l.code == cfg_lab]
-                        if specific_labs:
-                            course_labs = specific_labs + [l for l in course_labs if l not in specific_labs]
-
-                    available_lab = None
-                    for lab in course_labs:
-                        if all(lab.id not in room_schedule[day][p] for p in block_periods):
-                            available_lab = lab
-                            break
-
-                    if available_lab:
-                        # Place the contiguous lab block
-                        lab_instance_id = f"lab_{subj.code}_{day}_{start_p}"
-                        for p in block_periods:
-                            grid[day][p] = {
-                                'id': f'slot_{day}_{p}_{year}_{section}',
-                                'subjectCode': subj.code,
-                                'subjectName': subj.name,
-                                'credits': subj.credits,
-                                'type': 'lab',
-                                'isLab': True,
-                                'isLabStart': (p == start_p),
-                                'isLabContinuation': (p > start_p),
-                                'labDuration': hours,
-                                'labInstanceId': lab_instance_id,
-                                'facultyId': p_id,
-                                'facultyName': p_name,
-                                'roomId': available_lab.id,
-                                'roomName': available_lab.code
-                            }
-                            prof_schedule[day][p].add(p_id)
-                            room_schedule[day][p].add(available_lab.id)
-
-                        assigned_lab_names.add(available_lab.code)
-                        placed = True
-                        break
-
+            # Two passes:
+            # Pass 1: Strict max 1 lab per section per day (pedagogical ideal)
+            # Pass 2: Allow a second non-overlapping afternoon lab if needed
+            for allow_second_lab in [False, True]:
                 if placed:
                     break
+                for day in staggered_days:
+                    if not allow_second_lab:
+                        if any(grid[day][p] is not None and grid[day][p].get('isLab') for p in PERIODS):
+                            continue
+
+                    for start_p in lab_start_periods:
+                        block_periods = list(range(start_p, start_p + hours))
+                        # Ensure all periods in block are within valid range <= 10 and exclude period 1
+                        if max(block_periods) > 10 or 1 in block_periods:
+                            continue
+
+                        # 1. Section must be free across all periods
+                        if not all(grid[day][p] is None for p in block_periods):
+                            continue
+
+                        # 2. Professor must be free across all periods
+                        if not all(p_id not in prof_schedule[day][p] for p in block_periods):
+                            continue
+
+                        # 3. Find an available laboratory room
+                        course_labs = self._get_labs_for_course(subj)
+                        if selected_labs:
+                            sel_ids = {l.id if hasattr(l, 'id') else (l.get('id') if isinstance(l, dict) else str(l)) for l in selected_labs}
+                            filtered_cl = [l for l in course_labs if l.id in sel_ids or l.code in sel_ids]
+                            if filtered_cl:
+                                course_labs = filtered_cl
+
+                        # If HoD explicitly selected a specific lab room for this course
+                        cfg_lab = task_cfg.get('labRoomId') if task_cfg else None
+                        if cfg_lab and cfg_lab != 'auto':
+                            specific_labs = [l for l in course_labs if l.id == cfg_lab or l.code == cfg_lab]
+                            if specific_labs:
+                                course_labs = specific_labs + [l for l in course_labs if l not in specific_labs]
+
+                        available_lab = None
+                        for lab in course_labs:
+                            if all(lab.id not in room_schedule[day][p] and lab.code not in room_schedule[day][p] for p in block_periods):
+                                available_lab = lab
+                                break
+
+                        if available_lab:
+                            # Place the contiguous lab block
+                            lab_instance_id = f"lab_{subj.code}_{day}_{start_p}"
+                            for p in block_periods:
+                                grid[day][p] = {
+                                    'id': f'slot_{day}_{p}_{year}_{section}',
+                                    'subjectCode': subj.code,
+                                    'subjectName': subj.name,
+                                    'credits': subj.credits,
+                                    'ltp': getattr(subj, 'ltp', None) or ('(0-0-3)' if getattr(subj, 'type', None) == 'lab' else (f'({subj.credits}-0-0)' if getattr(subj, 'credits', None) else '(3-0-0)')),
+                                    'type': 'lab',
+                                    'isLab': True,
+                                    'isLabStart': (p == start_p),
+                                    'isLabContinuation': (p > start_p),
+                                    'labDuration': hours,
+                                    'labInstanceId': lab_instance_id,
+                                    'facultyId': p_id,
+                                    'facultyName': p_name,
+                                    'roomId': available_lab.id,
+                                    'roomName': available_lab.code
+                                }
+                                prof_schedule[day][p].add(p_id)
+                                room_schedule[day][p].add(available_lab.id)
+                                room_schedule[day][p].add(available_lab.code)
+
+                            assigned_lab_names.add(available_lab.code)
+                            placed = True
+                            break
+
+                    if placed:
+                        break
 
             if not placed:
                 unplaced.append({
@@ -530,6 +604,7 @@ class TimetableConstraintEngine:
                                     'subjectCode': subj.code,
                                     'subjectName': subj.name,
                                     'credits': subj.credits,
+                                    'ltp': getattr(subj, 'ltp', None) or (f'({subj.credits}-0-0)' if getattr(subj, 'credits', None) else '(3-0-0)'),
                                     'type': 'theory',
                                     'facultyId': p_id,
                                     'facultyName': p_name,
@@ -560,6 +635,7 @@ class TimetableConstraintEngine:
                                         'subjectCode': subj.code,
                                         'subjectName': subj.name,
                                         'credits': subj.credits,
+                                        'ltp': getattr(subj, 'ltp', None) or (f'({subj.credits}-0-0)' if getattr(subj, 'credits', None) else '(3-0-0)'),
                                         'type': 'theory',
                                         'facultyId': p_id,
                                         'facultyName': p_name,

@@ -37,18 +37,72 @@ def manual_swap(current_user):
     target_grid = dict(target_tt.grid_data) if target_tt_id != source_tt_id else source_grid
 
     s_day = source.get('day')
-    s_slot = str(source.get('slotId'))
     t_day = target.get('day')
-    t_slot = str(target.get('slotId'))
+    s_periods = source.get('periods')
+    t_periods = target.get('periods')
 
-    source_cell = source_grid.get(s_day, {}).get(s_slot)
-    target_cell = target_grid.get(t_day, {}).get(t_slot)
+    if not s_periods:
+        s_slot = source.get('slotId')
+        s_cell = source_grid.get(s_day, {}).get(str(s_slot))
+        # If source is a lab, find all contiguous lab slots automatically
+        if s_cell and (s_cell.get('isLab') or s_cell.get('type') == 'lab'):
+            candidate_p = [2, 3, 4, 5, 6, 7, 8, 9, 10]
+            s_inst = s_cell.get('labInstanceId')
+            s_code = s_cell.get('subjectCode')
 
-    # Perform swap in dictionary
-    if s_day in source_grid:
-        source_grid[s_day][s_slot] = target_cell
-    if t_day in target_grid:
-        target_grid[t_day][t_slot] = source_cell
+            def is_same_lab(c):
+                if not c or not (c.get('isLab') or c.get('type') == 'lab'):
+                    return False
+                if s_inst and c.get('labInstanceId'):
+                    return c.get('labInstanceId') == s_inst
+                return c.get('subjectCode') == s_code
+
+            num_s = int(s_slot)
+            start_p = num_s
+            while (start_p - 1) in candidate_p and is_same_lab(source_grid.get(s_day, {}).get(str(start_p - 1))):
+                start_p -= 1
+            end_p = num_s
+            while (end_p + 1) in candidate_p and is_same_lab(source_grid.get(s_day, {}).get(str(end_p + 1))):
+                end_p += 1
+            s_periods = list(range(start_p, end_p + 1))
+            t_slot_num = int(target.get('slotId'))
+            t_periods = [t_slot_num + i for i in range(len(s_periods))]
+        else:
+            s_periods = [int(s_slot)]
+            t_periods = [int(target.get('slotId'))]
+    else:
+        if not t_periods:
+            t_slot_num = int(target.get('slotId'))
+            t_periods = [t_slot_num + i for i in range(len(s_periods))]
+
+    # Snapshot cells to prevent in-place overwrites
+    s_cells = [source_grid.get(s_day, {}).get(str(p)) for p in s_periods]
+    t_cells = [target_grid.get(t_day, {}).get(str(p)) for p in t_periods]
+
+    for idx, (sp, tp) in enumerate(zip(s_periods, t_periods)):
+        sc = s_cells[idx]
+        tc = t_cells[idx]
+
+        # Update lab continuation flags for source cell moving to target
+        if sc and (sc.get('isLab') or sc.get('type') == 'lab'):
+            sc = dict(sc)
+            sc['isLabStart'] = (idx == 0)
+            sc['isLabContinuation'] = (idx > 0)
+            sc['labInstanceId'] = f"lab_{sc.get('subjectCode')}_{t_day}_{t_periods[0]}"
+            sc['id'] = f"slot_{t_day}_{tp}_{target_tt.year}_{target_tt.section}"
+
+        # Update lab continuation flags for target cell moving to source
+        if tc and (tc.get('isLab') or tc.get('type') == 'lab'):
+            tc = dict(tc)
+            tc['isLabStart'] = (idx == 0)
+            tc['isLabContinuation'] = (idx > 0)
+            tc['labInstanceId'] = f"lab_{tc.get('subjectCode')}_{s_day}_{s_periods[0]}"
+            tc['id'] = f"slot_{s_day}_{sp}_{source_tt.year}_{source_tt.section}"
+
+        if s_day in source_grid:
+            source_grid[s_day][str(sp)] = tc
+        if t_day in target_grid:
+            target_grid[t_day][str(tp)] = sc
 
     source_tt.grid_data = source_grid
     if target_tt_id != source_tt_id:
@@ -59,7 +113,7 @@ def manual_swap(current_user):
         user_id=current_user.user_id,
         action='SLOT_SWAP',
         status_code=200,
-        message=f"HoD swapped slot ({s_day} P{s_slot}) with ({t_day} P{t_slot})"
+        message=f"HoD swapped {len(s_periods)}-hour block ({s_day} P{s_periods}) with ({t_day} P{t_periods})"
     )
     db.session.add(log)
     db.session.commit()

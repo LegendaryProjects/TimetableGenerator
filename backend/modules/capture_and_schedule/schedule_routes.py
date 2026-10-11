@@ -173,6 +173,7 @@ def generate_drafts(current_user):
     selected_subjects_by_year = data.get('selectedSubjectsByYear')
     subject_settings = data.get('subjectSettings', {})
     sections_per_year = data.get('sectionsPerYear')
+    sections_per_semester = data.get('sectionsPerSemester')
     selected_classrooms = data.get('selectedClassrooms')
     selected_labs = data.get('selectedLabs')
     section_classrooms = data.get('sectionClassrooms', {})
@@ -194,7 +195,15 @@ def generate_drafts(current_user):
         )
         drafts = [draft] if draft else []
     else:
-        if sections_per_year:
+        if sections_per_semester:
+            is_even = str(semester_type).lower() == 'even'
+            year_configs = {
+                1: {'sections': int(sections_per_semester.get('2' if is_even else '1', sections_per_semester.get(2 if is_even else 1, 2)))},
+                2: {'sections': int(sections_per_semester.get('4' if is_even else '3', sections_per_semester.get(4 if is_even else 3, 2)))},
+                3: {'sections': int(sections_per_semester.get('6' if is_even else '5', sections_per_semester.get(6 if is_even else 5, 2)))},
+                4: {'sections': int(sections_per_semester.get('8' if is_even else '7', sections_per_semester.get(8 if is_even else 7, 2)))},
+            }
+        elif sections_per_year:
             year_configs = {int(y): {'sections': int(s)} for y, s in sections_per_year.items()}
         else:
             year_configs = {y: {'sections': sections_count} for y in [1, 2, 3, 4]}

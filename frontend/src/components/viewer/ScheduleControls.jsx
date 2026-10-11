@@ -141,7 +141,7 @@ export default function ScheduleControls() {
                   <div className={`flex rounded-xl p-1 border h-10 items-center ${
                     isDark ? 'bg-[#090d16] border-[#1e293b]' : 'bg-slate-100 border-slate-200'
                   }`}>
-                    {SECTIONS_LIST.slice(0, 3).map(s => (
+                    {SECTIONS_LIST.map(s => (
                       <button
                         key={s}
                         onClick={() => setSelectedSection(s)}
@@ -202,7 +202,7 @@ export default function ScheduleControls() {
                   <div className={`flex rounded-xl p-1 border h-10 items-center ${
                     isDark ? 'bg-[#090d16] border-[#1e293b]' : 'bg-slate-100 border-slate-200'
                   }`}>
-                    {SECTIONS_LIST.slice(0, 3).map(s => (
+                    {SECTIONS_LIST.map(s => (
                       <button
                         key={s}
                         onClick={() => setSelectedSection(s)}

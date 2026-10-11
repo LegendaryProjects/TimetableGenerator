@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTimetable } from '../../context/TimetableContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import {
-  Building, BookOpen, Sparkles, RotateCcw, Zap, Check, AlertOctagon, X, FlaskConical
+  Building, BookOpen, Sparkles, RotateCcw, Zap, Check, AlertOctagon, X, Monitor
 } from 'lucide-react';
 
 const ODD_SEMESTERS = [
@@ -33,6 +33,7 @@ export default function ConstraintForm({ onClose }) {
     subjects,
     professors,
     foundationProfessors,
+    allProfessors,
     generateDraftsForDepartment,
     generateSingleSectionDraft,
     generationError,
@@ -52,10 +53,21 @@ export default function ConstraintForm({ onClose }) {
 
   const [selectedCRs, setSelectedCRs] = useState([]);
   const [selectedLabs, setSelectedLabs] = useState([]);
-  const [numSections, setNumSections] = useState(2);
+  const [sectionsPerSemester, setSectionsPerSemester] = useState({
+    1: 2, 2: 2, 3: 2, 4: 2, 5: 2, 6: 2, 7: 2, 8: 2
+  });
   const [targetSection, setTargetSection] = useState('A');
+  const currentSemSections = sectionsPerSemester[selectedSemester] || 2;
 
   const availableSemesters = semesterType === 'even' ? EVEN_SEMESTERS : ODD_SEMESTERS;
+
+  // Always ensure selectedSemester is one of the availableSemesters in active session
+  useEffect(() => {
+    const validValues = availableSemesters.map(s => Number(s.value));
+    if (!validValues.includes(Number(selectedSemester))) {
+      setSelectedSemester(validValues[0] || (semesterType === 'even' ? 2 : 1));
+    }
+  }, [availableSemesters, selectedSemester, setSelectedSemester, semesterType]);
 
   const handleSemesterTypeChange = (newType) => {
     if (newType === semesterType) return;
@@ -75,7 +87,8 @@ export default function ConstraintForm({ onClose }) {
   const semSubjects = subjects.filter(s => 
     s.semester ? Number(s.semester) === Number(selectedSemester) : Number(s.year) === Math.ceil(Number(selectedSemester) / 2)
   );
-  const [selectedSubjs, setSelectedSubjs] = useState([]);
+  const [selectedSubjsBySem, setSelectedSubjsBySem] = useState({});
+  const selectedSubjs = selectedSubjsBySem[selectedSemester] || [];
   const [configs, setConfigs] = useState({});
   const [isGenerating, setIsGenerating] = useState(false);
   const [sectionClassrooms, setSectionClassrooms] = useState({});
@@ -87,21 +100,79 @@ export default function ConstraintForm({ onClose }) {
     }
   }, [classrooms]);
 
-  // Sync laboratories
-  useEffect(() => {
-    if (laboratories && laboratories.length > 0) {
-      setSelectedLabs(laboratories.map(l => l.id));
+  // Central Science labs (Chemistry & Physics) should be available only to 1st and 2nd semesters
+  const isChemistryLab = (lab) => {
+    return lab.department_id === 'CY' ||
+           lab.code?.startsWith('UG-CY-') ||
+           lab.id?.startsWith('lab_cy_') ||
+           lab.name?.toLowerCase().includes('chemistry');
+  };
+
+  const isPhysicsLab = (lab) => {
+    return lab.department_id === 'PH' ||
+           lab.code?.startsWith('UG-PH-') ||
+           lab.id?.startsWith('lab_ph_') ||
+           lab.name?.toLowerCase().includes('physics');
+  };
+
+  const isScienceLab = (lab) => isChemistryLab(lab) || isPhysicsLab(lab);
+
+  const availableLaboratories = useMemo(() => {
+    const semNum = Number(selectedSemester);
+    if (semNum === 1 || semNum === 2) {
+      return laboratories || [];
     }
-  }, [laboratories]);
+    return (laboratories || []).filter(lab => !isScienceLab(lab));
+  }, [laboratories, selectedSemester]);
+
+  // Sync laboratories based on availableLaboratories for the active semester:
+  // For Sem 1 & 2: select all departmental labs + only ONE chemistry lab and ONE physics lab by default
+  useEffect(() => {
+    if (availableLaboratories && availableLaboratories.length > 0) {
+      const validIds = availableLaboratories.map(l => l.id);
+      const semNum = Number(selectedSemester);
+
+      setSelectedLabs(prev => {
+        if (semNum === 1 || semNum === 2) {
+          const validPrev = prev.filter(id => validIds.includes(id));
+          const hasScience = validPrev.some(id => {
+            const labObj = availableLaboratories.find(l => l.id === id);
+            return labObj && isScienceLab(labObj);
+          });
+          // If no science labs were selected (e.g. initial load or switching from higher sem),
+          // default to all departmental labs + 1 chemistry lab + 1 physics lab
+          if (!hasScience) {
+            const deptIds = availableLaboratories.filter(l => !isScienceLab(l)).map(l => l.id);
+            const firstCy = availableLaboratories.find(l => isChemistryLab(l));
+            const firstPh = availableLaboratories.find(l => isPhysicsLab(l));
+            const defaults = [...deptIds];
+            if (firstCy) defaults.push(firstCy.id);
+            if (firstPh) defaults.push(firstPh.id);
+            return defaults;
+          }
+          return validPrev;
+        } else {
+          // Semesters 3-8: strictly exclude science labs
+          const nonScienceValid = availableLaboratories.filter(l => !isScienceLab(l)).map(l => l.id);
+          const filtered = prev.filter(id => nonScienceValid.includes(id));
+          return filtered.length > 0 ? filtered : nonScienceValid;
+        }
+      });
+    } else {
+      setSelectedLabs([]);
+    }
+  }, [availableLaboratories, selectedSemester]);
 
   const currentCohortKey = `S${selectedSemester}_Sec${targetSection}`;
 
-  const isClassroomOccupied = (crId) => {
+  const isClassroomOccupied = (crId, forCohortKey = currentCohortKey) => {
     // Check if assigned to another cohort in current form session
     const otherEntry = Object.entries(sectionClassrooms).find(
-      ([k, id]) => id === crId && k !== currentCohortKey
+      ([k, id]) => id === crId && k !== forCohortKey
     );
-    if (otherEntry) return true;
+    if (otherEntry) {
+      return { occupied: true, reason: `Assigned to ${otherEntry[0]}` };
+    }
 
     // Check if in use by an active timetable in the department
     const crObj = classrooms?.find(c => c.id === crId);
@@ -114,26 +185,65 @@ export default function ConstraintForm({ onClose }) {
               day && Object.values(day).some(cell => cell && (cell.roomId === crId || (crName && cell.roomName === crName)))
             )))
     );
-    return Boolean(otherTT);
+    if (otherTT) {
+      const semLabel = otherTT.semester ? `Sem ${otherTT.semester}` : `Year ${otherTT.year}`;
+      return { occupied: true, reason: `In use by ${semLabel} Sec ${otherTT.section}` };
+    }
+    return { occupied: false };
   };
 
-  const currentClassroomId = sectionClassrooms[currentCohortKey] || (() => {
-    if (!classrooms || classrooms.length === 0) return '';
-    const freeCR = classrooms.find(cr => !isClassroomOccupied(cr.id));
-    if (freeCR) return freeCR.id;
-    return classrooms[0]?.id || '';
-  })();
+  const getClassroomIdForSection = (sec) => {
+    const cohortKey = `S${selectedSemester}_Sec${sec}`;
+    return sectionClassrooms[cohortKey] || '';
+  };
 
-  const handleClassroomChange = (crId) => {
+  const handleClassroomChangeForSection = (sec, crId) => {
+    const cohortKey = `S${selectedSemester}_Sec${sec}`;
+    if (!crId) {
+      setSectionClassrooms(prev => {
+        const next = { ...prev };
+        delete next[cohortKey];
+        return next;
+      });
+      return;
+    }
+
+    // Guard against duplicate selection across sections in current semester
+    const activeSecs = SECTIONS.slice(0, currentSemSections);
+    const existingSec = activeSecs.find(s => s !== sec && sectionClassrooms[`S${selectedSemester}_Sec${s}`] === crId);
+    if (existingSec) {
+      const crObj = classrooms?.find(c => c.id === crId);
+      notify(`Classroom Overlap: ${crObj?.name || crId} is already assigned to Section ${existingSec}. Please select a different classroom.`, 'error');
+      return;
+    }
+
     setSectionClassrooms(prev => ({
       ...prev,
-      [currentCohortKey]: crId
+      [cohortKey]: crId
     }));
   };
 
-  // Handle number of sections selection (1 -> A, 2 -> A,B, 3 -> A,B,C, 4 -> A,B,C,D)
+  const currentClassroomId = getClassroomIdForSection(targetSection);
+
+  const handleClassroomChange = (crId) => {
+    handleClassroomChangeForSection(targetSection, crId);
+  };
+
+  // Handle number of sections selection for current semester (1 -> A, 2 -> A,B, 3 -> A,B,C, 4 -> A,B,C,D)
   const handleNumSectionsChange = (count) => {
-    setNumSections(count);
+    setSectionsPerSemester(prev => ({
+      ...prev,
+      [selectedSemester]: count
+    }));
+    const validSections = SECTIONS.slice(0, count);
+    if (!validSections.includes(targetSection)) {
+      setTargetSection('A');
+    }
+  };
+
+  const handleSelectSemester = (sem) => {
+    setSelectedSemester(sem);
+    const count = sectionsPerSemester[sem] || 2;
     const validSections = SECTIONS.slice(0, count);
     if (!validSections.includes(targetSection)) {
       setTargetSection('A');
@@ -161,14 +271,78 @@ export default function ConstraintForm({ onClose }) {
     return subject.type === 'lab' || subject.requires_lab || (subject.name && subject.name.toLowerCase().includes('lab'));
   };
 
+  // Parse L-T-P structure (e.g. 3-0-2 -> 3 hrs theory, 2 hrs lab; 0-0-3 -> 0 hrs theory, 3 hrs lab)
+  const parseLtp = (subj) => {
+    if (!subj) return { theoryHours: 3, labHours: 0, requiresLab: false };
+    const ltpStr = subj.ltp || '';
+    const match = ltpStr.match(/(\d+)\s*[-:]\s*(\d+)\s*[-:]\s*(\d+)/);
+    if (match) {
+      const l = parseInt(match[1], 10) || 0;
+      const t = parseInt(match[2], 10) || 0;
+      const p = parseInt(match[3], 10) || 0;
+      const theoryHours = l + t;
+      const labHours = p;
+      return {
+        theoryHours,
+        labHours,
+        requiresLab: labHours > 0
+      };
+    }
+    const isLab = isLabSubject(subj);
+    if (isLab) {
+      return { theoryHours: 0, labHours: 3, requiresLab: true };
+    }
+    const defaultTheory = subj.classesPerWeek || (subj.credits >= 4 ? 4 : 3);
+    return { theoryHours: defaultTheory, labHours: 0, requiresLab: false };
+  };
+
+  const resolveFacultyId = (defaultFac, subj) => {
+    if (!defaultFac) return professors[0]?.id || '';
+    if (professors.some(p => p.id === defaultFac)) return defaultFac;
+
+    // Cross-department prefix matching (e.g. it_p01 <-> ai_it_p01)
+    if (defaultFac.startsWith('it_p')) {
+      const aiId = `ai_${defaultFac}`;
+      if (professors.some(p => p.id === aiId)) return aiId;
+    }
+    if (defaultFac.startsWith('ai_it_p')) {
+      const itId = defaultFac.replace('ai_', '');
+      if (professors.some(p => p.id === itId)) return itId;
+    }
+
+    // Name-based matching if professor is in allProfessors
+    const allMatch = allProfessors?.find(p => p.id === defaultFac);
+    if (allMatch) {
+      const nameMatch = professors.find(p => p.name?.trim().toLowerCase() === allMatch.name?.trim().toLowerCase());
+      if (nameMatch) return nameMatch.id;
+    }
+
+    // Foundation matching
+    if (foundationProfessors?.some(p => p.id === defaultFac)) return defaultFac;
+
+    return professors[0]?.id || '';
+  };
+
+
   // Sync subjects when semester changes
   useEffect(() => {
+    if (!subjects || subjects.length === 0) return;
+
     const currentSemSubjs = subjects.filter(s => 
       s.semester ? Number(s.semester) === Number(selectedSemester) : Number(s.year) === Math.ceil(Number(selectedSemester) / 2)
     );
-    // Select top 6 subjects by default
-    const initialSelected = currentSemSubjs.slice(0, 6).map(s => s.id);
-    setSelectedSubjs(initialSelected);
+
+    // Initialize selection for this semester ONLY if not already initialized
+    setSelectedSubjsBySem(prev => {
+      if (prev[selectedSemester] && prev[selectedSemester].length > 0) {
+        return prev; // Preserve user's selections!
+      }
+      const initialSelected = currentSemSubjs.slice(0, 6).map(s => s.id);
+      return {
+        ...prev,
+        [selectedSemester]: initialSelected
+      };
+    });
 
     const initialConfigs = {};
     currentSemSubjs.forEach(s => {
@@ -188,17 +362,48 @@ export default function ConstraintForm({ onClose }) {
         }
       }
 
-      const isLab = isLabSubject(s);
+      const parsed = parseLtp(s);
       initialConfigs[s.id] = {
-        theoryHours: isLab ? 0 : (s.classesPerWeek || (s.credits >= 4 ? 4 : 3)),
-        labHours: isLab ? 3 : 0,
-        requiresLab: isLab,
-        facultyId: defaultFac || (professors[0]?.id || ''),
+        theoryHours: parsed.theoryHours,
+        labHours: parsed.labHours,
+        requiresLab: parsed.requiresLab,
+        facultyId: resolveFacultyId(defaultFac, s),
         labRoomId: 'auto'
       };
     });
-    setConfigs(initialConfigs);
-  }, [subjects, selectedSemester, professors, foundationProfessors]);
+
+    // Merge into configs, preserving any existing customizations by the user
+    setConfigs(prev => {
+      const merged = { ...initialConfigs };
+      Object.keys(prev).forEach(key => {
+        if (prev[key]) {
+          merged[key] = { ...merged[key], ...prev[key] };
+        }
+      });
+      return { ...prev, ...merged };
+    });
+  }, [subjects, selectedSemester, professors, foundationProfessors, allProfessors]);
+
+  const toggleSubject = (subjId) => {
+    setSelectedSubjsBySem(prev => {
+      const current = prev[selectedSemester] || [];
+      if (current.includes(subjId)) {
+        if (current.length <= 1) {
+          notify('At least one must be selected.', 'warning');
+          return prev;
+        }
+        return {
+          ...prev,
+          [selectedSemester]: current.filter(id => id !== subjId)
+        };
+      } else {
+        return {
+          ...prev,
+          [selectedSemester]: [...current, subjId]
+        };
+      }
+    });
+  };
 
   const toggle = (list, set, id, min = 1) => {
     if (list.includes(id)) {
@@ -217,19 +422,44 @@ export default function ConstraintForm({ onClose }) {
       notify('Select at least one subject via checkboxes.', 'warning');
       return;
     }
+    const chosenClassroomId = getClassroomIdForSection(targetSection);
+    if (!chosenClassroomId) {
+      notify(`Please select a classroom for Section ${targetSection} before generating.`, 'warning');
+      return;
+    }
     setIsGenerating(true);
     clearGenerationError();
     try {
+      const cleanSubjectSettings = {};
+      selectedSubjs.forEach(sid => {
+        const sObj = semSubjects.find(s => s.id === sid) || subjects.find(s => s.id === sid);
+        if (!sObj) return;
+        const parsed = parseLtp(sObj);
+        const curCfg = configs[sid] || {};
+        const chosenFacultyId = curCfg.facultyId || (sObj ? resolveFacultyId(sObj.defaultFaculty, sObj) : '');
+        const effectiveLabHours = curCfg.labHours !== undefined ? Number(curCfg.labHours) : parsed.labHours;
+        const effectiveTheoryHours = curCfg.theoryHours !== undefined ? Number(curCfg.theoryHours) : parsed.theoryHours;
+        const effectiveRequiresLab = curCfg.labHours !== undefined ? (Number(curCfg.labHours) > 0) : (curCfg.requiresLab !== undefined ? Boolean(curCfg.requiresLab) : parsed.requiresLab);
+
+        cleanSubjectSettings[sid] = {
+          ...curCfg,
+          facultyId: chosenFacultyId,
+          theoryHours: effectiveTheoryHours,
+          labHours: effectiveLabHours,
+          requiresLab: effectiveRequiresLab
+        };
+      });
+
       const res = await generateSingleSectionDraft({
         department,
         year: Math.ceil(Number(selectedSemester) / 2),
         semester: Number(selectedSemester),
         section: targetSection,
         selectedClassrooms: classrooms.filter(c => selectedCRs.includes(c.id)),
-        selectedClassroomId: currentClassroomId,
-        selectedLabs: laboratories.filter(l => selectedLabs.includes(l.id)),
+        selectedClassroomId: chosenClassroomId,
+        selectedLabs: availableLaboratories.filter(l => selectedLabs.includes(l.id)),
         selectedSubjects: selectedSubjs,
-        subjectSettings: configs
+        subjectSettings: cleanSubjectSettings
       });
       setIsGenerating(false);
       if (res && onClose) onClose();
@@ -243,18 +473,112 @@ export default function ConstraintForm({ onClose }) {
       notify('Select at least one subject via checkboxes.', 'warning');
       return;
     }
+
+    // Validate that all sections in active semester have classrooms selected
+    const activeSecs = SECTIONS.slice(0, currentSemSections);
+    const missingSecs = activeSecs.filter(s => !getClassroomIdForSection(s));
+    if (missingSecs.length > 0) {
+      notify(`Please select a classroom for Section ${missingSecs.join(', ')} in Semester ${selectedSemester}.`, 'warning');
+      return;
+    }
+
+    // Verify zero overlaps across active sections
+    const assignedMap = {};
+    for (const sec of activeSecs) {
+      const crId = getClassroomIdForSection(sec);
+      if (assignedMap[crId]) {
+        const crObj = classrooms.find(c => c.id === crId);
+        notify(`Classroom Overlap: ${crObj?.name || crId} cannot be shared between Section ${assignedMap[crId]} and Section ${sec}. Please assign unique classrooms.`, 'error');
+        return;
+      }
+      assignedMap[crId] = sec;
+    }
+
     setIsGenerating(true);
     clearGenerationError();
     try {
       const calcYear = Math.ceil(Number(selectedSemester) / 2);
+      const isEven = semesterType === 'even';
+      const sectionsPerYear = {
+        1: sectionsPerSemester[isEven ? 2 : 1] || 2,
+        2: sectionsPerSemester[isEven ? 4 : 3] || 2,
+        3: sectionsPerSemester[isEven ? 6 : 5] || 2,
+        4: sectionsPerSemester[isEven ? 8 : 7] || 2
+      };
+
+      const fullSectionClassrooms = { ...sectionClassrooms };
+      const usedRoomIds = new Set(Object.values(fullSectionClassrooms).filter(Boolean));
+
+      availableSemesters.forEach(semObj => {
+        const sVal = semObj.value;
+        const sSecCount = sectionsPerSemester[sVal] || 2;
+        SECTIONS.slice(0, sSecCount).forEach(sec => {
+          const key = `S${sVal}_Sec${sec}`;
+          if (!fullSectionClassrooms[key]) {
+            const freeCR = classrooms.find(cr => !usedRoomIds.has(cr.id));
+            if (freeCR) {
+              fullSectionClassrooms[key] = freeCR.id;
+              usedRoomIds.add(freeCR.id);
+            } else {
+              const fallbackCR = classrooms[usedRoomIds.size % classrooms.length];
+              if (fallbackCR) fullSectionClassrooms[key] = fallbackCR.id;
+            }
+          }
+        });
+      });
+
+      const selectedSubjectsByYear = {};
+      [1, 2, 3, 4].forEach(yr => {
+        const targetSem = isEven ? yr * 2 : (yr * 2) - 1;
+        const semSubjs = selectedSubjsBySem[targetSem];
+        if (semSubjs && semSubjs.length > 0) {
+          selectedSubjectsByYear[yr] = semSubjs;
+        }
+      });
+      if (!selectedSubjectsByYear[calcYear] || selectedSubjectsByYear[calcYear].length === 0) {
+        selectedSubjectsByYear[calcYear] = selectedSubjs;
+      }
+
+      const cleanSubjectSettings = {};
+      // Collect all candidate subjects across all semesters/years and custom configs
+      const allSubjectIds = new Set();
+      Object.values(selectedSubjectsByYear).forEach(ids => {
+        (ids || []).forEach(id => allSubjectIds.add(id));
+      });
+      selectedSubjs.forEach(id => allSubjectIds.add(id));
+      Object.keys(configs).forEach(id => allSubjectIds.add(id));
+      Object.values(selectedSubjsBySem).forEach(ids => {
+        (ids || []).forEach(id => allSubjectIds.add(id));
+      });
+
+      allSubjectIds.forEach(sid => {
+        const sObj = subjects.find(s => s.id === sid);
+        if (!sObj) return;
+        const parsed = parseLtp(sObj);
+        const curCfg = configs[sid] || {};
+        const chosenFacultyId = curCfg.facultyId || (sObj ? resolveFacultyId(sObj.defaultFaculty, sObj) : '');
+        const effectiveLabHours = curCfg.labHours !== undefined ? Number(curCfg.labHours) : parsed.labHours;
+        const effectiveTheoryHours = curCfg.theoryHours !== undefined ? Number(curCfg.theoryHours) : parsed.theoryHours;
+        const effectiveRequiresLab = curCfg.labHours !== undefined ? (Number(curCfg.labHours) > 0) : (curCfg.requiresLab !== undefined ? Boolean(curCfg.requiresLab) : parsed.requiresLab);
+
+        cleanSubjectSettings[sid] = {
+          ...curCfg,
+          facultyId: chosenFacultyId,
+          theoryHours: effectiveTheoryHours,
+          labHours: effectiveLabHours,
+          requiresLab: effectiveRequiresLab
+        };
+      });
+
       const res = await generateDraftsForDepartment({
         department,
         selectedClassrooms: classrooms.filter(c => selectedCRs.includes(c.id)),
-        sectionClassrooms: sectionClassrooms,
-        selectedLabs: laboratories.filter(l => selectedLabs.includes(l.id)),
-        sectionsPerYear: { 1: numSections, 2: numSections, 3: numSections, 4: numSections },
-        selectedSubjectsByYear: { [calcYear]: selectedSubjs },
-        subjectSettings: configs,
+        sectionClassrooms: fullSectionClassrooms,
+        selectedLabs: (laboratories || []).filter(l => selectedLabs.includes(l.id) || isScienceLab(l)),
+        sectionsPerYear: sectionsPerYear,
+        sectionsPerSemester: sectionsPerSemester,
+        selectedSubjectsByYear: selectedSubjectsByYear,
+        subjectSettings: cleanSubjectSettings,
         semesterType: semesterType
       });
       setIsGenerating(false);
@@ -299,22 +623,22 @@ export default function ConstraintForm({ onClose }) {
       )}
 
       {/* Header */}
-      <div className={`flex flex-wrap items-center justify-between pb-4 border-b gap-3 ${
+      <div className={`flex flex-wrap items-center justify-between pb-3.5 border-b gap-2.5 ${
         isDark ? 'border-slate-800' : 'border-slate-200'
       }`}>
         <div>
           <div className="flex items-center gap-2">
-            <h3 className={`text-base font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            <h3 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
               Constraint Configuration
             </h3>
-            <span className={`px-2 py-0.2 rounded text-xs font-semibold border ${
+            <span className={`px-2 py-0.5 rounded-md text-[11px] font-medium border ${
               isDark ? 'bg-blue-950/60 text-blue-300 border-blue-800/40' : 'bg-blue-50 text-blue-700 border-blue-200'
             }`}>
               Dept. of {deptObj.name}
             </span>
           </div>
         </div>
-        <div className="text-xs text-slate-400">
+        <div className="text-[11px] text-slate-400">
           HoD In-Charge: <span className={`font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{currentUser?.name}</span>
         </div>
       </div>
@@ -330,9 +654,7 @@ export default function ConstraintForm({ onClose }) {
             </h4>
           </div>
           <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-semibold border ${
-            semesterType === 'odd'
-              ? isDark ? 'bg-amber-950/60 text-amber-300 border-amber-800/40' : 'bg-amber-100 text-amber-800 border-amber-300'
-              : isDark ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/40' : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+            isDark ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/40' : 'bg-emerald-100 text-emerald-800 border-emerald-300'
           }`}>
             Active: {semesterType === 'odd' ? 'Odd Semester' : 'Even Semester'}
           </span>
@@ -438,8 +760,8 @@ export default function ConstraintForm({ onClose }) {
       {/* Step 2: Classrooms Selection */}
       <div className="space-y-2.5">
         <div className="flex items-center justify-between">
-          <span className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-            <Building className="w-3.5 h-3.5 text-blue-500" />
+          <span className={`text-sm font-bold uppercase tracking-wider flex items-center gap-1.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+            <Building className="w-4 h-4 text-blue-500" />
             <span>Assigned Department Classrooms ({selectedCRs.length} Selected)</span>
           </span>
         </div>
@@ -462,8 +784,8 @@ export default function ConstraintForm({ onClose }) {
                   {checked && <Check className="w-3 h-3" />}
                 </div>
                 <div className="min-w-0">
-                  <div className={`text-xs font-semibold truncate ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{cr.name}</div>
-                  <div className="text-[10px] text-slate-500 font-mono">Capacity: {cr.capacity}</div>
+                  <div className={`text-sm font-semibold truncate ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{cr.name}</div>
+                  <div className="text-xs text-slate-400 font-mono">Cap: {cr.capacity}</div>
                 </div>
               </div>
             );
@@ -474,16 +796,13 @@ export default function ConstraintForm({ onClose }) {
       {/* Step 3: Laboratories Selection */}
       <div className="space-y-2.5">
         <div className="flex items-center justify-between">
-          <span className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-            <FlaskConical className="w-3.5 h-3.5 text-emerald-500" />
-            <span>Assigned Department Laboratories ({selectedLabs.length} Selected)</span>
-          </span>
-          <span className="text-xs text-slate-400">
-            {selectedLabs.length} labs active for practical scheduling
+          <span className={`text-sm font-bold uppercase tracking-wider flex items-center gap-1.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+            <Monitor className="w-4 h-4 text-emerald-500" />
+            <span>Assigned Department Laboratories ({selectedLabs.filter(id => availableLaboratories.some(l => l.id === id)).length} Selected)</span>
           </span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-          {laboratories.map(lab => {
+          {availableLaboratories.map(lab => {
             const checked = selectedLabs.includes(lab.id);
             return (
               <div 
@@ -500,10 +819,9 @@ export default function ConstraintForm({ onClose }) {
                 }`}>
                   {checked && <Check className="w-3 h-3" />}
                 </div>
-                <div className="min-w-0">
-                  <div className={`text-xs font-semibold truncate ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{lab.code} - {lab.name}</div>
-                  <div className="text-[10px] text-slate-500 font-mono">Dept: {lab.department_id || department} • Cap: {lab.capacity || 90}</div>
-                </div>
+                  <div className={`text-sm font-semibold truncate ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                    {lab.code} - {lab.name?.replace(/^Central\s+/i, '')}
+                  </div>
               </div>
             );
           })}
@@ -515,34 +833,42 @@ export default function ConstraintForm({ onClose }) {
         isDark ? 'bg-[#090d16]/60 border-slate-800' : 'bg-slate-50/70 border-slate-200'
       }`}>
         <div className="flex flex-wrap items-center gap-5">
+          {/* Sem */}
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Target Sem:</span>
+            <span className="text-sm font-bold uppercase tracking-wider text-slate-400">Sem:</span>
             <div className={`flex rounded-md p-0.5 border ${
               isDark ? 'bg-[#0f172a] border-[#1e293b]' : 'bg-white border-slate-200'
             }`}>
-              {availableSemesters.map(s => (
-                <button
-                  key={s.id}
-                  onClick={() => setSelectedSemester(Number(s.value))}
-                  className={`px-2.5 py-1 rounded text-xs font-semibold transition-all ${
-                    Number(selectedSemester) === s.value 
-                      ? 'bg-blue-600 text-white shadow-sm' 
-                      : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  {s.label}
-                </button>
-              ))}
+              {availableSemesters.map(s => {
+                const sCount = sectionsPerSemester[s.value] || 2;
+                const isSelected = Number(selectedSemester) === s.value;
+                const secLabels = SECTIONS.slice(0, sCount).join(', ');
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => handleSelectSemester(Number(s.value))}
+                    className={`px-3 py-1 rounded text-sm font-semibold transition-all flex items-center gap-1.5 ${
+                      isSelected 
+                        ? 'bg-blue-600 text-white shadow-sm' 
+                        : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <span>{s.label} ({secLabels})</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* Number of Sections Selector */}
+          {/* Number of Sections Selector for Currently Selected Semester */}
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">No. of Sections:</span>
+            <span className="text-sm font-bold uppercase tracking-wider text-slate-400">
+              No. of Sections:
+            </span>
             <select
-              value={numSections}
+              value={currentSemSections}
               onChange={(e) => handleNumSectionsChange(Number(e.target.value))}
-              className={`px-2.5 py-1 border rounded-md text-xs font-semibold focus:outline-none cursor-pointer ${
+              className={`px-3 py-1 border rounded-md text-sm font-semibold focus:outline-none cursor-pointer ${
                 isDark ? 'bg-[#0f172a] border-[#1e293b] text-slate-200' : 'bg-white border-slate-200 text-slate-800'
               }`}
             >
@@ -554,17 +880,17 @@ export default function ConstraintForm({ onClose }) {
             </select>
           </div>
 
-          {/* Target Section (only shows sections up to selected count) */}
+          {/* Target Section (only shows sections up to selected count for this semester) */}
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Target Section:</span>
+            <span className="text-sm font-bold uppercase tracking-wider text-slate-400">Target Section:</span>
             <div className={`flex rounded-md p-0.5 border ${
               isDark ? 'bg-[#0f172a] border-[#1e293b]' : 'bg-white border-slate-200'
             }`}>
-              {SECTIONS.slice(0, numSections).map(s => (
+              {SECTIONS.slice(0, currentSemSections).map(s => (
                 <button
                   key={s}
                   onClick={() => setTargetSection(s)}
-                  className={`px-3 py-1 rounded text-xs font-semibold transition-all ${
+                  className={`px-3.5 py-1 rounded text-sm font-semibold transition-all ${
                     targetSection === s 
                       ? 'bg-blue-600 text-white shadow-sm' 
                       : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
@@ -578,80 +904,105 @@ export default function ConstraintForm({ onClose }) {
         </div>
       </div>
 
-      {/* Target Classroom Selector (Just below Target Sem box) */}
-      <div className={`p-3 rounded-xl border flex items-center gap-3 ${
+      {/* Target Classroom Selectors (one dropdown per section) */}
+      <div className={`p-3 rounded-xl border flex flex-wrap items-center gap-4 ${
         isDark ? 'bg-[#090d16]/60 border-slate-800' : 'bg-slate-50/70 border-slate-200'
       }`}>
-        <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-          <Building className="w-3.5 h-3.5 text-blue-500" />
-          <span>Select Classroom:</span>
+        <span className="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+          <Building className="w-4 h-4 text-blue-500" />
+          <span>Select Classroom{currentSemSections > 1 ? 's' : ''} (Sem {selectedSemester}):</span>
         </span>
-        <select
-          value={currentClassroomId}
-          onChange={(e) => handleClassroomChange(e.target.value)}
-          className={`px-3 py-1.5 border rounded-md text-xs font-semibold focus:outline-none cursor-pointer ${
-            isDark ? 'bg-[#0f172a] border-[#1e293b] text-slate-200' : 'bg-white border-slate-200 text-slate-800'
-          }`}
-        >
-          {classrooms
-            .filter(cr => !isClassroomOccupied(cr.id) || cr.id === currentClassroomId)
-            .map(cr => (
-              <option key={cr.id} value={cr.id}>
-                {cr.name} (Capacity: {cr.capacity})
-              </option>
-            ))}
-        </select>
+        <div className="flex flex-wrap items-center gap-3">
+          {SECTIONS.slice(0, currentSemSections).map(sec => {
+            const secCrId = getClassroomIdForSection(sec);
+            return (
+              <div key={sec} className="flex items-center gap-1.5">
+                <span className={`text-xs font-bold px-2 py-1 rounded border uppercase ${
+                  isDark ? 'bg-[#0f172a] border-[#1e293b] text-blue-400' : 'bg-white border-slate-200 text-blue-600'
+                }`}>
+                  Sec {sec}:
+                </span>
+                <select
+                  value={secCrId}
+                  onChange={(e) => handleClassroomChangeForSection(sec, e.target.value)}
+                  className={`px-3 py-1.5 border rounded-md text-sm font-semibold focus:outline-none cursor-pointer ${
+                    isDark ? 'bg-[#0f172a] border-[#1e293b] text-slate-200' : 'bg-white border-slate-200 text-slate-800'
+                  }`}
+                >
+                  <option value="">Select Classroom...</option>
+                  {classrooms.map(cr => {
+                    const otherSecInSem = SECTIONS.slice(0, currentSemSections).find(
+                      s => s !== sec && sectionClassrooms[`S${selectedSemester}_Sec${s}`] === cr.id
+                    );
+                    const occStatus = isClassroomOccupied(cr.id, `S${selectedSemester}_Sec${sec}`);
+                    const isCurrent = secCrId === cr.id;
+                    const isConflict = !isCurrent && (Boolean(otherSecInSem) || occStatus.occupied);
+
+                    let statusNote = '';
+                    if (otherSecInSem) {
+                      statusNote = ` (Assigned to Sec ${otherSecInSem})`;
+                    } else if (occStatus.occupied && !isCurrent) {
+                      statusNote = ` (${occStatus.reason})`;
+                    }
+
+                    return (
+                      <option key={cr.id} value={cr.id} disabled={isConflict}>
+                        {cr.name} {isConflict ? statusNote : `(Cap: ${cr.capacity})`}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Step 5: Course Allocation from Database Curriculum */}
-      <div className="space-y-2.5">
-        <div className="flex items-center justify-between">
+      <div className="space-y-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <span className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
             <BookOpen className="w-3.5 h-3.5 text-blue-500" />
-            <span>NITK Curriculum Courses for Semester {selectedSemester} ({selectedSubjs.length} selected of {semSubjects.length})</span>
-          </span>
-          <span className="text-xs text-slate-400">
-            {selectedSubjs.length} subjects will be scheduled
+            <span>Courses for Semester {selectedSemester}</span>
           </span>
         </div>
 
-        <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+        <div className="space-y-1.5 max-h-80 overflow-y-auto pr-1">
           {semSubjects.map(s => {
             const on = selectedSubjs.includes(s.id);
-            const cfg = configs[s.id] || { theoryHours: isLabSubject(s) ? 0 : 3, labHours: isLabSubject(s) ? 3 : 0, facultyId: '' };
+            const parsed = parseLtp(s);
+            const cfg = configs[s.id] || { 
+              theoryHours: parsed.theoryHours, 
+              labHours: parsed.labHours, 
+              requiresLab: parsed.requiresLab,
+              facultyId: resolveFacultyId(s.defaultFaculty, s) 
+            };
             return (
               <div 
                 key={s.id} 
-                className={`p-3 rounded-xl border transition-all ${
+                className={`py-2 px-2.5 rounded-lg border transition-all ${
                   on 
                     ? isDark ? 'border-slate-700 bg-[#141d30]' : 'border-slate-200 bg-white shadow-sm'
-                    : isDark ? 'border-slate-800/60 bg-slate-900/20 opacity-40' : 'border-slate-100 bg-slate-50 opacity-40'
+                    : isDark ? 'border-slate-800/70 bg-slate-900/25 opacity-60 hover:opacity-90' : 'border-slate-200/70 bg-slate-50/60 opacity-60 hover:opacity-90'
                 }`}
               >
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
                   <div 
-                    className="flex items-center gap-2.5 cursor-pointer select-none" 
-                    onClick={() => toggle(selectedSubjs, setSelectedSubjs, s.id)}
+                    className="flex items-center gap-2 cursor-pointer select-none min-w-0 flex-wrap sm:flex-nowrap" 
+                    onClick={() => toggleSubject(s.id)}
                   >
-                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                    <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-colors ${
                       on ? 'bg-blue-600 border-blue-500 text-white' : isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-300 bg-white'
                     }`}>
-                      {on && <Check className="w-3 h-3" />}
+                      {on && <Check className="w-2.5 h-2.5" />}
                     </div>
-                    <span className={`font-mono text-xs font-bold ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
+                    <span className={`font-mono text-xs font-bold shrink-0 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
                       {s.code}
                     </span>
                     <span className={`text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
                       {s.name}
                     </span>
-                    {(isLabSubject(s) || (cfg.labHours > 0)) && (
-                      <span className={`text-[10px] uppercase px-1.5 py-0.5 rounded font-black shrink-0 ${
-                        isDark ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60' : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                      }`}>
-                        LAB (Afternoon)
-                      </span>
-                    )}
-                    <span className={`text-[10px] uppercase px-1.5 py-0.2 rounded font-bold ${
+                    <span className={`text-[10px] uppercase px-1.5 py-0.5 rounded font-bold shrink-0 ${
                       isDark ? 'bg-blue-950/60 text-blue-300 border border-blue-800/40' : 'bg-blue-50 text-blue-700 border border-blue-200'
                     }`}>
                       {s.credits} Credits • {s.ltp || '(3-0-0)'}
@@ -659,12 +1010,12 @@ export default function ConstraintForm({ onClose }) {
                   </div>
 
                   {on && (
-                    <div className="flex flex-wrap items-center gap-3 pl-6 md:pl-0">
+                    <div className="flex flex-wrap items-center gap-2 pl-5 md:pl-0 shrink-0">
                       {/* Theory Hours Dropdown */}
-                      <label className="flex items-center gap-1.5 text-xs text-slate-400">
+                      <label className="flex items-center gap-1 text-xs text-slate-400">
                         <span>Theory Hours:</span>
                         <select 
-                          value={cfg.theoryHours !== undefined ? cfg.theoryHours : (isLabSubject(s) ? 0 : 3)} 
+                          value={cfg.theoryHours !== undefined ? cfg.theoryHours : parsed.theoryHours} 
                           onChange={e => {
                             const val = Number(e.target.value);
                             setConfigs(p => ({
@@ -675,7 +1026,7 @@ export default function ConstraintForm({ onClose }) {
                               }
                             }));
                           }}
-                          className={`px-2 py-1 border rounded-md text-xs font-semibold focus:outline-none cursor-pointer ${
+                          className={`px-2.5 py-1.5 border rounded-md text-xs font-semibold focus:outline-none cursor-pointer ${
                             isDark ? 'bg-[#090d16] border-[#1e293b] text-slate-200' : 'bg-white border-slate-200 text-slate-800'
                           }`}
                         >
@@ -686,10 +1037,10 @@ export default function ConstraintForm({ onClose }) {
                       </label>
 
                       {/* Lab Hours Dropdown beside Theory Hours */}
-                      <label className="flex items-center gap-1.5 text-xs text-slate-400">
+                      <label className="flex items-center gap-1 text-xs text-slate-400">
                         <span>Lab Hours:</span>
                         <select 
-                          value={cfg.labHours !== undefined ? cfg.labHours : (isLabSubject(s) ? 3 : 0)} 
+                          value={cfg.labHours !== undefined ? cfg.labHours : parsed.labHours} 
                           onChange={e => {
                             const val = Number(e.target.value);
                             setConfigs(p => ({
@@ -701,7 +1052,7 @@ export default function ConstraintForm({ onClose }) {
                               }
                             }));
                           }}
-                          className={`px-2 py-1 border rounded-md text-xs font-semibold focus:outline-none cursor-pointer ${
+                          className={`px-2.5 py-1.5 border rounded-md text-xs font-semibold focus:outline-none cursor-pointer ${
                             isDark ? 'bg-[#090d16] border-[#1e293b] text-slate-200' : 'bg-white border-slate-200 text-slate-800'
                           }`}
                         >
@@ -714,17 +1065,17 @@ export default function ConstraintForm({ onClose }) {
 
                       {/* Option for selecting lab room for courses requiring lab */}
                       {((cfg.labHours > 0) || (cfg.labHours === undefined && isLabSubject(s))) && (
-                        <label className="flex items-center gap-1.5 text-xs text-slate-400">
+                        <label className="flex items-center gap-1 text-xs text-slate-400">
                           <span>Lab Room:</span>
                           <select
                             value={cfg.labRoomId || 'auto'}
                             onChange={e => setConfigs(p => ({ ...p, [s.id]: { ...p[s.id], labRoomId: e.target.value } }))}
-                            className={`px-2 py-1 border rounded-md text-xs font-semibold max-w-[170px] truncate focus:outline-none cursor-pointer ${
+                            className={`px-2.5 py-1.5 border rounded-md text-xs font-semibold max-w-[150px] truncate focus:outline-none cursor-pointer ${
                               isDark ? 'bg-[#090d16] border-[#1e293b] text-slate-200' : 'bg-white border-slate-200 text-slate-800'
                             }`}
                           >
-                            <option value="auto">Auto (Any Available)</option>
-                            {laboratories
+                            <option value="auto">Auto</option>
+                            {availableLaboratories
                               .filter(l => selectedLabs.includes(l.id))
                               .map(l => (
                                 <option key={l.id} value={l.id}>{l.code}</option>
@@ -733,12 +1084,21 @@ export default function ConstraintForm({ onClose }) {
                         </label>
                       )}
 
-                      <label className="flex items-center gap-1.5 text-xs text-slate-400">
+                      <label className="flex items-center gap-1 text-xs text-slate-400">
                         <span>Faculty:</span>
                         <select 
-                          value={cfg.facultyId || s.defaultFaculty || ''} 
-                          onChange={e => setConfigs(p => ({ ...p, [s.id]: { ...p[s.id], facultyId: e.target.value } }))}
-                          className={`px-2 py-1 border rounded-md text-xs font-semibold max-w-[210px] truncate focus:outline-none ${
+                          value={cfg.facultyId || resolveFacultyId(s.defaultFaculty, s)} 
+                          onChange={e => {
+                            const val = e.target.value;
+                            setConfigs(p => ({
+                              ...p,
+                              [s.id]: {
+                                ...(p[s.id] || {}),
+                                facultyId: val
+                              }
+                            }));
+                          }}
+                          className={`px-2.5 py-1.5 border rounded-md text-xs font-semibold max-w-[190px] truncate focus:outline-none cursor-pointer ${
                             isDark ? 'bg-[#090d16] border-[#1e293b] text-slate-200' : 'bg-white border-slate-200 text-slate-800'
                           }`}
                         >
@@ -781,9 +1141,16 @@ export default function ConstraintForm({ onClose }) {
                               )}
                             </>
                           ) : (
-                            professors.map(p => (
-                              <option key={p.id} value={p.id}>{p.name}</option>
-                            ))
+                            <>
+                              {professors.map(p => (
+                                <option key={p.id} value={p.id}>{p.name}</option>
+                              ))}
+                              {cfg.facultyId && !professors.some(p => p.id === cfg.facultyId) && (
+                                <option value={cfg.facultyId}>
+                                  {allProfessors?.find(p => p.id === cfg.facultyId)?.name || 'Assigned Faculty'}
+                                </option>
+                              )}
+                            </>
                           )}
                         </select>
                       </label>
@@ -801,7 +1168,7 @@ export default function ConstraintForm({ onClose }) {
         isDark ? 'border-slate-800' : 'border-slate-200'
       }`}>
         <div className="text-xs text-slate-400">
-          Selected: <span className="font-semibold text-blue-400">{selectedCRs.length} Classrooms</span> • <span className="font-semibold text-emerald-400">{selectedLabs.length} Labs</span> • <span className="font-semibold text-blue-300">{selectedSubjs.length} Courses</span>
+          Selected: <span className="font-semibold text-blue-400">{selectedCRs.length} Classrooms</span> • <span className="font-semibold text-emerald-400">{selectedLabs.filter(id => availableLaboratories.some(l => l.id === id)).length} Labs</span> • <span className="font-semibold text-blue-300">{selectedSubjs.length} Courses</span>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
           <button 

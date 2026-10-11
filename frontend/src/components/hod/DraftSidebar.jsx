@@ -88,19 +88,19 @@ export default function DraftSidebar() {
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold border ${
+                  <div className={`px-2 h-7 rounded-lg flex items-center justify-center text-xs font-bold border shrink-0 ${
                     isDraft 
                       ? isDark ? 'bg-blue-950/60 text-blue-300 border-blue-800/40' : 'bg-blue-50 text-blue-700 border-blue-200'
                       : isDark ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/40' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                   }`}>
-                    S{tt.semester || ((tt.year * 2) - 1)}
+                    Year {tt.year || Math.ceil(Number(tt.semester || 1) / 2)}
                   </div>
                   <div>
                     <div className={`text-xs font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
                       Sem {tt.semester || ((tt.year * 2) - 1)} • Sec {tt.section}
                     </div>
                     <div className="text-[10px] text-slate-500 font-medium">
-                      {isDraft ? 'Draft Schedule' : 'Published Active'}
+                      {isDraft ? 'Draft' : (tt.isActive ? 'Active' : 'Published')}
                     </div>
                   </div>
                 </div>
@@ -110,7 +110,7 @@ export default function DraftSidebar() {
                     ? isDark ? 'bg-blue-950/60 text-blue-300 border-blue-800/40' : 'bg-blue-50 text-blue-700 border-blue-200'
                     : isDark ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/40' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                 }`}>
-                  {isDraft ? 'DRAFT' : 'LIVE'}
+                  {isDraft ? 'DRAFT' : (tt.isActive ? 'ACTIVE' : 'PUBLISHED')}
                 </span>
               </div>
 

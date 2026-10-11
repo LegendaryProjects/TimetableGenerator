@@ -6,7 +6,7 @@ import { useTimetable } from '../../context/TimetableContext';
 export default function ExportPdfButton({ timetable }) {
   const [exporting, setExporting] = useState(false);
   const [done, setDone] = useState(false);
-  const { currentViewerTimetable, notify } = useTimetable();
+  const { currentViewerTimetable, subjects, departments, workingDays, notify } = useTimetable();
 
   const activeTimetable = timetable || currentViewerTimetable;
 
@@ -17,7 +17,7 @@ export default function ExportPdfButton({ timetable }) {
     }
     setExporting(true);
     try {
-      await exportTimetableAsPDF(activeTimetable);
+      await exportTimetableAsPDF(activeTimetable, { subjects, departments, workingDays });
       setDone(true);
       notify('Timetable PDF downloaded successfully', 'success');
       setTimeout(() => setDone(false), 3000);

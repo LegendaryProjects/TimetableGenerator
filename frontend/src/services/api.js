@@ -39,7 +39,7 @@ async function request(endpoint, options = {}) {
   } catch (err) {
     console.error(`API Error on [${config.method || 'GET'} ${endpoint}]:`, err.message);
     if (err.name === 'TypeError' && err.message?.includes('Failed to fetch')) {
-      throw new Error('Unable to connect to the backend server. Please verify the backend is running on port 5000.');
+      throw new Error('Unable to connect server');
     }
     throw err;
   }

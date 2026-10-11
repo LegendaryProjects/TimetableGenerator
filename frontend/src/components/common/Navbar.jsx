@@ -22,51 +22,51 @@ export default function Navbar() {
           className="flex items-center gap-3 cursor-pointer select-none" 
           onClick={() => setIsEditingHodStudio(false)}
         >
-          <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-sm shadow-blue-500/20">
+          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-sm shadow-blue-500/20">
             <Calendar className="w-5 h-5 text-white" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className={`font-bold text-base tracking-tight ${
+              <span className={`font-bold text-lg tracking-tight ${
                 isDark ? 'text-white' : 'text-slate-900'
               }`}>
                 NITK AutoTTGen
               </span>
             </div>
-            <p className={`text-[11px] hidden sm:block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              Academic Timetable System
+            <p className={`text-xs hidden sm:block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              Academic Timetable Generator
             </p>
           </div>
         </div>
 
         {/* Navigation Switcher */}
-        <div className={`flex items-center rounded-lg p-0.5 border ${
+        <div className={`flex items-center rounded-xl p-1 border ${
           isDark ? 'bg-[#0f172a] border-[#1e293b]' : 'bg-slate-100 border-slate-200'
         }`}>
           <button
             onClick={() => setIsEditingHodStudio(false)}
-            className={`px-3.5 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all ${
+            className={`px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all ${
               !isEditingHodStudio 
                 ? 'bg-blue-600 text-white shadow-sm' 
                 : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <LayoutGrid className="w-3.5 h-3.5" />
+            <LayoutGrid className="w-4 h-4" />
             <span>Timetable</span>
           </button>
           {isHod && (
             <button
               onClick={() => setIsEditingHodStudio(true)}
-              className={`px-3.5 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all ${
+              className={`px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all ${
                 isEditingHodStudio 
                   ? 'bg-blue-600 text-white shadow-sm' 
                   : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <Sliders className="w-3.5 h-3.5" />
-              <span>HoD Studio</span>
+              <Sliders className="w-4 h-4" />
+              <span>HoD Dashboard</span>
               {draftTimetables.length > 0 && (
-                <span className="ml-1 px-1.5 py-0.2 rounded text-[10px] bg-blue-500 text-white font-bold">
+                <span className="ml-1 px-1.5 py-0.5 rounded text-[11px] bg-blue-500 text-white font-bold">
                   {draftTimetables.length}
                 </span>
               )}
@@ -75,9 +75,9 @@ export default function Navbar() {
         </div>
 
         {/* Right Section: Theme Toggle & User Account */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3.5">
           {currentUser && formattedLoginTime && (
-            <span className={`text-[10px] sm:text-[11px] font-medium px-2 py-0.5 rounded-md border transition-colors ${
+            <span className={`text-xs font-medium px-2.5 py-1 rounded-lg border transition-colors ${
               isDark ? 'bg-blue-950/60 border-blue-900/50 text-blue-300' : 'bg-slate-100 border-slate-200 text-slate-600'
             }`} title="Last logged in timestamp">
               Last login: {formattedLoginTime}
@@ -87,7 +87,7 @@ export default function Navbar() {
           {/* Theme Toggle Button */}
           <button
             onClick={toggleTheme}
-            className={`p-1.5 rounded-lg border flex items-center justify-center transition-colors ${
+            className={`p-2 rounded-lg border flex items-center justify-center transition-colors ${
               isDark 
                 ? 'bg-[#0f172a] hover:bg-[#1e293b] border-[#1e293b] text-slate-300' 
                 : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-600'
@@ -104,13 +104,13 @@ export default function Navbar() {
 
           {/* User Account / Profile */}
           {currentUser ? (
-            <div className={`flex items-center gap-2.5 pl-3 border-l ${isDark ? 'border-[#1e293b]' : 'border-slate-200'}`}>
+            <div className={`flex items-center gap-3 pl-3.5 border-l ${isDark ? 'border-[#1e293b]' : 'border-slate-200'}`}>
               <div className="text-right hidden sm:block">
                 <div>
-                  <span className={`text-xs font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentUser.name}</span>
+                  <span className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentUser.name}</span>
                 </div>
-                <div className="text-[11px] text-slate-400 flex items-center justify-end gap-1.5 mt-0.5">
-                  <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold uppercase ${
+                <div className="text-xs text-slate-400 flex items-center justify-end gap-1.5 mt-0.5">
+                  <span className={`px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-bold uppercase ${
                     isHod
                       ? 'bg-blue-950/90 text-blue-200 border border-blue-800'
                       : 'bg-blue-950/60 text-blue-300 border border-blue-800/50'
@@ -122,14 +122,14 @@ export default function Navbar() {
               </div>
               <button 
                 onClick={logout} 
-                className={`p-1.5 rounded-lg border transition-colors ${
+                className={`p-2 rounded-lg border transition-colors ${
                   isDark 
-                    ? 'border-[#1e293b] text-slate-400 hover:text-white hover:bg-slate-800' 
-                    : 'border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                    ? 'border-[#1e293b] text-slate-400 hover:text-red-400 hover:border-red-500/40 hover:bg-red-500/10' 
+                    : 'border-slate-200 text-slate-500 hover:text-red-600 hover:border-red-300 hover:bg-red-50'
                 }`} 
                 title="Sign Out"
               >
-                <LogOut className="w-4 h-4" />
+                <LogOut className="w-4 h-4 transition-colors" />
               </button>
             </div>
           ) : (

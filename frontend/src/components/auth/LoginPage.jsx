@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { ShieldCheck, User, Lock, Mail, ArrowRight, GraduationCap, Briefcase, Building2, Award, KeyRound, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { CoatedPerson, BagCarryingPerson } from '../common/RoleIcons';
 import campusImage from '../../assets/nitk-campus.jpg';
 import PasswordStrengthIndicator, { checkPasswordStrength } from './PasswordStrengthIndicator';
 
@@ -297,7 +298,7 @@ export default function LoginPage() {
         <div className="absolute inset-0 z-0">
           <img 
             src={campusImage} 
-            alt="NITK Surathkal Campus Garden & Fountain" 
+            alt="NITK Beach" 
             className="w-full h-full object-cover object-center transform filter brightness-90"
           />
           {/* Top and Bottom Vignette */}
@@ -317,7 +318,7 @@ export default function LoginPage() {
               </div>
               <div>
                 <h1 className="text-white font-black text-2xl sm:text-3xl tracking-tight leading-none">NITK AutoTTGen</h1>
-                <p className="text-blue-300 text-xs sm:text-sm font-bold tracking-wider uppercase mt-1">Academic Timetable System</p>
+                <p className="text-blue-300 text-xs sm:text-sm font-bold tracking-wider uppercase mt-1">Academic Timetable Generator</p>
               </div>
             </div>
 
@@ -328,14 +329,14 @@ export default function LoginPage() {
           </div>
 
           {/* Subtitle Attribution directly below Title */}
-          <div className="flex flex-col gap-0.5 px-1 text-xs">
-            <p className="text-slate-200/90 font-medium drop-shadow">
-              Created as a part of Software Engineering Course Project
+          <div className="flex flex-col gap-1 px-1">
+            <p className="text-slate-200/95 font-medium text-[13px] sm:text-sm drop-shadow">
+              Done as a part of Software Engineering Course Project
             </p>
-            <p className="font-bold text-white drop-shadow">
-              Created by Sankalp, Abhishek, Ravi
+            <p className="font-bold text-white text-[13px] sm:text-sm leading-snug drop-shadow">
+              Made by: <br></br>Abhishek Maruti Karennavar (241IT002) <br></br> Sankalp S Kunthe (241IT069) <br></br>Ravi Prakash Rain (241IT056)
             </p>
-            <p className="text-blue-300 font-medium text-[11px] drop-shadow">
+            <p className="text-blue-300 font-semibold text-xs sm:text-[13px] drop-shadow">
               Under the guidance of Prof. Jaidhar C D
             </p>
           </div>
@@ -355,7 +356,7 @@ export default function LoginPage() {
 
           {/* Single Line Clean Portal Explanation centered */}
           <p className="text-xs sm:text-sm text-slate-200/90 font-normal leading-relaxed drop-shadow pt-0.5 max-w-lg text-center">
-            Automated academic timetable formulation and schedule management portal.
+            Automated academic timetable management portal of NITK Surathkal.
           </p>
         </div>
 
@@ -377,17 +378,10 @@ export default function LoginPage() {
 
         <div className="max-w-md w-full mx-auto my-auto space-y-6">
           
-          <div className="space-y-2 text-center lg:text-left">
+          <div className="text-center lg:text-left">
             <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-              {activeTab === 'login' ? 'Institutional Sign In' : activeTab === 'forgot' ? 'Reset Password' : 'Create New Account'}
+              {activeTab === 'login' ? 'Sign In' : activeTab === 'forgot' ? 'Reset Password' : 'Create Account'}
             </h2>
-            <p className="text-xs sm:text-sm font-medium text-slate-400">
-              {activeTab === 'login'
-                ? 'Select your academic role to access your schedule'
-                : activeTab === 'forgot'
-                ? 'Enter your institutional email and set your new password'
-                : 'Register as a Student or Professor in NITK AutoTTGen'}
-            </p>
           </div>
 
           <div className={`rounded-3xl border shadow-xl overflow-hidden transition-colors ${
@@ -395,34 +389,36 @@ export default function LoginPage() {
           }`}>
 
             {/* Tab Bar: Sign In / Create Account */}
-            <div className={`p-4 border-b ${
-              isDark ? 'bg-[#0b0f17] border-[#1e293b]' : 'bg-slate-50 border-slate-200'
-            }`}>
-              <div className={`flex rounded-xl p-1 border ${
-                isDark ? 'bg-[#151c2e] border-[#243048]' : 'bg-white border-slate-200'
+            {activeTab !== 'forgot' && (
+              <div className={`p-4 border-b ${
+                isDark ? 'bg-[#0b0f17] border-[#1e293b]' : 'bg-slate-50 border-slate-200'
               }`}>
-                <button 
-                  onClick={() => { setActiveTab('login'); setError(''); setSuccessMsg(''); }}
-                  className={`flex-1 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all ${
-                    activeTab === 'login' 
-                      ? 'bg-blue-600 text-white shadow-md' 
-                      : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Sign In
-                </button>
-                <button 
-                  onClick={() => { setActiveTab('signup'); setError(''); setSuccessMsg(''); }}
-                  className={`flex-1 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all ${
-                    activeTab === 'signup' 
-                      ? 'bg-blue-600 text-white shadow-md' 
-                      : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Create Account
-                </button>
+                <div className={`flex rounded-xl p-1 border ${
+                  isDark ? 'bg-[#151c2e] border-[#243048]' : 'bg-white border-slate-200'
+                }`}>
+                  <button 
+                    onClick={() => { setActiveTab('login'); setError(''); setSuccessMsg(''); }}
+                    className={`flex-1 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all ${
+                      activeTab === 'login' 
+                        ? 'bg-blue-600 text-white shadow-md' 
+                        : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Sign In
+                  </button>
+                  <button 
+                    onClick={() => { setActiveTab('signup'); setError(''); setSuccessMsg(''); }}
+                    className={`flex-1 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all ${
+                      activeTab === 'signup' 
+                        ? 'bg-blue-600 text-white shadow-md' 
+                        : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Create Account
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Form Body */}
             <div className="p-6 space-y-4">
@@ -451,7 +447,7 @@ export default function LoginPage() {
                           ? 'border-blue-500 bg-blue-500/15 text-white ring-1 ring-blue-500/50 shadow-md font-bold' 
                           : isDark ? 'border-[#1e293b] text-slate-400 hover:border-[#2f3d58] bg-[#0b0f17]/70' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                       }`}>
-                      <ShieldCheck className="w-4 h-4 text-blue-500" />
+                      <CoatedPerson className="w-4 h-4 text-blue-500" />
                       <span>HoD</span>
                     </button>
 
@@ -461,7 +457,7 @@ export default function LoginPage() {
                           ? 'border-blue-600 bg-blue-900/30 text-white ring-1 ring-blue-500/50 shadow-md font-bold' 
                           : isDark ? 'border-[#1e293b] text-slate-400 hover:border-[#2f3d58] bg-[#0b0f17]/70' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                       }`}>
-                      <Briefcase className="w-4 h-4 text-blue-400" />
+                      <User className="w-4 h-4 text-blue-400" />
                       <span>Professor</span>
                     </button>
 
@@ -471,7 +467,7 @@ export default function LoginPage() {
                           ? 'border-blue-600 bg-blue-900/30 text-white ring-1 ring-blue-500/50 shadow-md font-bold' 
                           : isDark ? 'border-[#1e293b] text-slate-400 hover:border-[#2f3d58] bg-[#0b0f17]/70' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                       }`}>
-                      <User className="w-4 h-4 text-blue-400" />
+                      <BagCarryingPerson className="w-4 h-4 text-blue-400" />
                       <span>Student</span>
                     </button>
                   </div>
@@ -549,7 +545,7 @@ export default function LoginPage() {
                   {/* Portal 3: Student Login */}
                   {activePortal === 'STUDENT' && (
                     <div>
-                      <label className={`block text-xs font-black uppercase tracking-wider mb-1.5 ${isDark ? 'text-emerald-400' : 'text-emerald-800'}`}>
+                      <label className={`block text-xs font-black uppercase tracking-wider mb-1.5 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>
                         Student Institutional Email
                       </label>
                       <div className="relative">
@@ -558,8 +554,8 @@ export default function LoginPage() {
                           type="email" 
                           value={email} 
                           onChange={e => setEmail(e.target.value)} 
-                          placeholder="student.it@nitk.edu.in"
-                          className={`w-full pl-10 pr-3.5 py-2.5 border rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 ${
+                          placeholder="sankalp@nitk.edu.in"
+                          className={`w-full pl-10 pr-3.5 py-2.5 border rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 ${
                             isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
                           }`}
                         />
@@ -605,7 +601,7 @@ export default function LoginPage() {
                     disabled={loading}
                     className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-black flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 transition-all active:scale-95 disabled:opacity-50"
                   >
-                    <span>{loading ? 'Verifying with Database...' : 'Sign In'}</span>
+                    <span>{loading ? 'Verifying...' : 'Sign In'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </form>
@@ -621,8 +617,7 @@ export default function LoginPage() {
                       <ArrowLeft className="w-4 h-4" />
                     </button>
                     <div>
-                      <h3 className="text-sm font-bold text-white">Reset Account Password</h3>
-                      <p className="text-xs text-slate-400">Enter your institutional email and set your new password</p>
+                      <h3 className="text-sm font-bold text-white">Reset Password</h3>
                     </div>
                   </div>
 
@@ -636,7 +631,7 @@ export default function LoginPage() {
                         type="email" 
                         value={forgotEmail} 
                         onChange={e => setForgotEmail(e.target.value)} 
-                        placeholder="e.g. professor.dept@nitk.edu.in"
+                        placeholder="abhi@nitk.edu.in"
                         required
                         className={`w-full pl-10 pr-3.5 py-2.5 border rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 ${
                           isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
@@ -689,7 +684,6 @@ export default function LoginPage() {
                     disabled={loading}
                     className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-black flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 transition-all active:scale-95 disabled:opacity-50"
                   >
-                    <KeyRound className="w-4 h-4" />
                     <span>{loading ? 'Updating Password...' : 'Reset Password'}</span>
                   </button>
 
@@ -697,9 +691,9 @@ export default function LoginPage() {
                     <button 
                       type="button" 
                       onClick={() => { setActiveTab('login'); setError(''); setSuccessMsg(''); }}
-                      className="text-xs text-slate-400 hover:text-white transition-colors"
+                      className="text-xs sm:text-sm text-blue-400 hover:text-blue-300 underline font-semibold transition-colors"
                     >
-                      Remember your credentials? <span className="text-blue-400 underline font-semibold">Back to Sign In</span>
+                      Back to Login
                     </button>
                   </div>
                 </form>
@@ -713,14 +707,14 @@ export default function LoginPage() {
                       className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
                         signupRole === 'STUDENT' ? 'border-blue-600 bg-blue-900/30 text-blue-300 ring-1 ring-blue-500/40 shadow-sm' : 'border-slate-700 text-slate-400 hover:border-slate-600'
                       }`}>
-                      <User className="w-3.5 h-3.5 text-blue-400" />
+                      <BagCarryingPerson className="w-3.5 h-3.5 text-blue-400" />
                       <span>Student</span>
                     </button>
                     <button type="button" onClick={() => setSignupRole('FACULTY')}
                       className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
                         signupRole === 'FACULTY' ? 'border-blue-600 bg-blue-900/30 text-blue-300 ring-1 ring-blue-500/40 shadow-sm' : 'border-slate-700 text-slate-400 hover:border-slate-600'
                       }`}>
-                      <Briefcase className="w-3.5 h-3.5 text-blue-400" />
+                      <User className="w-3.5 h-3.5 text-blue-400" />
                       <span>Professor</span>
                     </button>
                   </div>
@@ -752,7 +746,7 @@ export default function LoginPage() {
                           type="email" 
                           value={email} 
                           onChange={e => setEmail(e.target.value)} 
-                          placeholder="faculty.dept@nitk.edu.in"
+                          placeholder="ravi@nitk.edu.in"
                           required
                           className={`w-full px-3.5 py-2 border rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 ${
                             isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
@@ -810,7 +804,7 @@ export default function LoginPage() {
 
                       <div>
                         <label className={`block text-xs font-black uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>Email Address</label>
-                        <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="student.it@nitk.edu.in"
+                        <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="sankalp@nitk.edu.in"
                           className={`w-full px-3.5 py-2 border rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 ${
                             isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
                           }`} />
@@ -877,7 +871,7 @@ export default function LoginPage() {
 
         {/* Bottom Centered Copyright */}
         <div className="w-full mt-auto pt-6 pb-1 text-center">
-          <p className="text-xs font-medium text-slate-500">
+          <p className="text-xs sm:text-[13px] font-medium text-slate-400">
             © {new Date().getFullYear()} Sankalp, Abhishek, Ravi | All rights reserved.
           </p>
         </div>

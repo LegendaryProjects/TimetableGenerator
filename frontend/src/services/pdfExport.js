@@ -291,52 +291,121 @@ export async function exportNoticeBoardPdf(timetable, academicOptions = {}) {
 
     currentY = doc.lastAutoTable.finalY + 1.2;
 
-    // --- Location Allocation Box (3 DISTINCT ROWS matching official template) ---
-    const locationHeight = 17.0;
+    // --- Location Allocation Box (2 DISTINCT ROWS: Class Room & Laboratory) ---
+    const locationHeight = 12.0;
+    const rowH = locationHeight / 2;
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.35);
 
     doc.rect(margin, currentY, contentWidth, locationHeight);
 
-    // 2 internal horizontal dividers splitting into 3 equal rows
-    const rowH = locationHeight / 3;
+    // 1 internal horizontal divider splitting into 2 equal rows
     doc.line(margin, currentY + rowH, pageWidth - margin, currentY + rowH);
-    doc.line(margin, currentY + (rowH * 2), pageWidth - margin, currentY + (rowH * 2));
 
-    const classroomName = timetable.assignedClassroom || 'CR 2.2, Lecture Hall Complex (LHC)-D, NITK, Surathkal';
-    const labsList = timetable.assignedLabs && timetable.assignedLabs.length > 0 
-      ? timetable.assignedLabs.join(' & ') + ', 6th Floor, Department of Information Technology, NITK, Surathkal'
-      : 'UG-Lab-3 & UG-Lab-2, 6th Floor, Department of Information Technology, NITK, Surathkal';
+    const classroomName = timetable.assignedClassroom || 'CR 2.2, LHC-D, NITK, Surathkal';
+
+    // Extract assigned labs from grid and timetable data
+    const labNamesSet = new Set();
+    if (timetable.assignedLabs && Array.isArray(timetable.assignedLabs)) {
+      timetable.assignedLabs.forEach(l => {
+        if (l) labNamesSet.add(typeof l === 'string' ? l : (l.code || l.name || l.id));
+      });
+    }
+    if (timetable.grid) {
+      Object.values(timetable.grid).forEach(day => {
+        if (day) {
+          Object.values(day).forEach(cell => {
+            if (cell && (cell.isLab || cell.type === 'lab') && cell.roomName) {
+              labNamesSet.add(cell.roomName);
+            }
+          });
+        }
+      });
+    }
+    const labNamesArray = Array.from(labNamesSet).filter(Boolean);
+    const labsList = labNamesArray.length > 0
+      ? `${labNamesArray.join(' & ')}, NITK Surathkal`
+      : 'UG-IT-1, NITK Surathkal';
 
     doc.setFont('times', 'bold');
     doc.setFontSize(9.0);
     doc.setTextColor(0, 0, 0);
 
     // Row 1: Classroom
-    doc.text(`Class Room: ${classroomName}`, margin + 2.5, currentY + 3.8);
+    doc.text(`Class Room: ${classroomName}`, margin + 2.5, currentY + 4.0);
 
     // Row 2: Laboratory
-    doc.text(`Laboratory Name: ${labsList}`, margin + 2.5, currentY + rowH + 3.8);
-
-    // Row 3: Minor (Lab)
-    doc.text('Minor (Lab): UG Lab-3, 6th Floor, Department of Information Technology, NITK, Surathkal', margin + 2.5, currentY + (rowH * 2) + 3.8);
+    doc.text(`Laboratory: ${labsList}`, margin + 2.5, currentY + rowH + 4.0);
 
     currentY += locationHeight + 2.5;
 
     // --- Official 7-Column Course & Faculty Roster ---
     // Columns: Sl. No | Course Code | Course Name | (L-T-P) | Credits | Faculty Name | Course Instructor
     const subjectsMap = {};
+    const subjectsList = Array.isArray(academicOptions.subjects) ? academicOptions.subjects : [];
+
+    const findSubject = (code, name) => {
+      if (!code && !name) return null;
+      const cleanCode = code ? String(code).trim().toLowerCase() : '';
+      const cleanName = name ? String(name).trim().toLowerCase() : '';
+      return subjectsList.find(s => {
+        const sCode = s.code ? String(s.code).trim().toLowerCase() : '';
+        const sId = s.id ? String(s.id).trim().toLowerCase() : '';
+        const sName = s.name ? String(s.name).trim().toLowerCase() : '';
+        return (cleanCode && (sCode === cleanCode || sId === cleanCode)) ||
+               (cleanName && sName === cleanName);
+      });
+    };
+
     DAYS.forEach(day => {
       [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].forEach(p => {
         const slot = timetable.grid?.[day]?.[p];
         if (slot && slot.subjectCode) {
           if (!subjectsMap[slot.subjectCode]) {
+            const matchedSubj = findSubject(slot.subjectCode, slot.subjectName || slot.title);
+            const isLab = slot.isLab || slot.type === 'lab' || matchedSubj?.type === 'lab';
+            const courseCredits = slot.credits || matchedSubj?.credits || (isLab ? 2 : 3);
+
+            // Resolve LTP:
+            // 1. Matched subject from curriculum is the gold standard
+            let courseLtp = null;
+            if (matchedSubj && matchedSubj.ltp) {
+              courseLtp = String(matchedSubj.ltp).trim();
+            } else if (slot.ltp && slot.ltp !== '(3-0-2)') {
+              // Explicit slot LTP that wasn't the legacy fallback
+              courseLtp = String(slot.ltp).trim();
+            } else if (slot.ltp && !isLab && courseCredits === 4) {
+              courseLtp = String(slot.ltp).trim();
+            }
+
+            // 2. Intelligent inference if still unassigned
+            if (!courseLtp) {
+              if (isLab) {
+                courseLtp = courseCredits <= 1 ? '(0-0-2)' : '(0-0-3)';
+              } else {
+                courseLtp = `(${courseCredits}-0-0)`;
+              }
+            }
+
+            // Clean up: ensure enclosed in parentheses e.g. "3-0-0" -> "(3-0-0)"
+            if (!courseLtp.startsWith('(')) {
+              courseLtp = `(${courseLtp})`;
+            }
+
+            // Safeguard: A 3-credit theory course or pure lab should NEVER be (3-0-2)
+            if (courseLtp === '(3-0-2)' && (courseCredits === 3 || isLab)) {
+              courseLtp = isLab ? '(0-0-3)' : '(3-0-0)';
+            }
+
+            const courseName = slot.subjectName || matchedSubj?.name || slot.title || slot.subjectCode;
+            const courseFaculty = slot.facultyName || slot.faculty || matchedSubj?.facultyName || 'Course Instructor';
+
             subjectsMap[slot.subjectCode] = {
               code: slot.subjectCode,
-              name: slot.subjectName || slot.title || slot.subjectCode,
-              ltp: slot.ltp || '(3-0-2)',
-              credits: slot.credits || 4,
-              faculty: slot.facultyName || slot.faculty || 'Course Instructor'
+              name: courseName,
+              ltp: courseLtp,
+              credits: courseCredits,
+              faculty: courseFaculty
             };
           }
         }

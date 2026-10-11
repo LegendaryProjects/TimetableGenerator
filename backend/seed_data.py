@@ -93,10 +93,10 @@ def seed_database():
 
     # 3. Classrooms
     classrooms_data = [
-        {'id': 'cr_it1', 'code': 'CR 2.2 LHC-D', 'name': 'CR 2.2 LHC-D, NITK Surathkal', 'capacity': 90, 'department_id': 'IT'},
-        {'id': 'cr_it2', 'code': 'CR 2.3 LHC-D', 'name': 'CR 2.3 LHC-D, NITK Surathkal', 'capacity': 90, 'department_id': 'IT'},
-        {'id': 'cr_cse1', 'code': 'CR 1.1 LHC-C', 'name': 'CR 1.1 LHC-C, NITK Surathkal', 'capacity': 90, 'department_id': 'CSE'},
-        {'id': 'cr_cse2', 'code': 'CR 1.2 LHC-C', 'name': 'CR 1.2 LHC-C, NITK Surathkal', 'capacity': 90, 'department_id': 'CSE'},
+        {'id': 'cr_it1', 'code': 'CR 2.2 LHC-D', 'name': 'CR 2.2 LHC-D, NITK Surathkal', 'capacity': 120, 'department_id': 'IT'},
+        {'id': 'cr_it2', 'code': 'CR 2.3 LHC-D', 'name': 'CR 2.3 LHC-D, NITK Surathkal', 'capacity': 120, 'department_id': 'IT'},
+        {'id': 'cr_cse1', 'code': 'CR 1.1 LHC-C', 'name': 'CR 1.1 LHC-C, NITK Surathkal', 'capacity': 108, 'department_id': 'CSE'},
+        {'id': 'cr_cse2', 'code': 'CR 1.2 LHC-C', 'name': 'CR 1.2 LHC-C, NITK Surathkal', 'capacity': 108, 'department_id': 'CSE'},
         {'id': 'cr_ece1', 'code': 'CR 3.1 LHC-B', 'name': 'CR 3.1 LHC-B, NITK Surathkal', 'capacity': 90, 'department_id': 'ECE'},
         {'id': 'cr_ai1', 'code': 'CR 4.1 LHC-A', 'name': 'CR 4.1 LHC-A, NITK Surathkal', 'capacity': 90, 'department_id': 'AI'}
     ]

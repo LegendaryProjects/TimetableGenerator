@@ -52,20 +52,33 @@ export function TimetableProvider({ children }) {
   });
 
   const [selectedDepartment, setSelectedDepartment] = useState(currentUser?.department || 'IT');
-  const [selectedSemester, setSelectedSemester] = useState(currentUser?.semester || 5);
-  const [selectedYear, setSelectedYear] = useState(3);
-  const [selectedSection, setSelectedSection] = useState('A');
-  const [selectedFacultyId, setSelectedFacultyId] = useState('');
-  const [viewMode, setViewMode] = useState('student');
-  
   const [semesterType, setSemesterType] = useState(() => {
     const saved = localStorage.getItem('nitk_semester_type');
     if (saved === 'odd' || saved === 'even') return saved;
     return (currentUser?.semester && Number(currentUser.semester) % 2 === 0) ? 'even' : 'odd';
   });
 
+  const [selectedSemester, setSelectedSemester] = useState(() => {
+    const savedType = localStorage.getItem('nitk_semester_type');
+    const isEven = savedType ? savedType === 'even' : (currentUser?.semester && Number(currentUser.semester) % 2 === 0);
+    const initialSem = Number(currentUser?.semester || (isEven ? 6 : 5));
+    if (isEven && initialSem % 2 !== 0) return Math.min(8, initialSem + 1);
+    if (!isEven && initialSem % 2 === 0) return Math.max(1, initialSem - 1);
+    return initialSem;
+  });
+  const [selectedYear, setSelectedYear] = useState(3);
+  const [selectedSection, setSelectedSection] = useState('A');
+  const [selectedFacultyId, setSelectedFacultyId] = useState('');
+  const [viewMode, setViewMode] = useState('student');
+
   useEffect(() => {
     localStorage.setItem('nitk_semester_type', semesterType);
+    const sem = Number(selectedSemester);
+    if (semesterType === 'even' && sem % 2 !== 0) {
+      setSelectedSemester(Math.min(8, sem + 1));
+    } else if (semesterType === 'odd' && sem % 2 === 0) {
+      setSelectedSemester(Math.max(1, sem - 1));
+    }
   }, [semesterType]);
 
   const [departments, setDepartments] = useState([]);
@@ -378,6 +391,7 @@ export function TimetableProvider({ children }) {
   const generateDraftsForDepartment = async ({ 
     department = selectedDepartment,
     sectionsPerYear = { 1: 2, 2: 2, 3: 2, 4: 2 },
+    sectionsPerSemester = null,
     selectedSubjectsByYear = {},
     subjectSettings = {},
     selectedClassrooms = [],
@@ -391,6 +405,7 @@ export function TimetableProvider({ children }) {
       const res = await api.generateDrafts({
         department,
         sectionsPerYear,
+        sectionsPerSemester,
         selectedSubjectsByYear,
         subjectSettings,
         selectedClassrooms,
@@ -407,9 +422,18 @@ export function TimetableProvider({ children }) {
         });
 
         if (candidateDrafts.length > 0) {
-          setActiveDraftId(candidateDrafts[0].id);
-          setSelectedYear(candidateDrafts[0].year);
-          setSelectedSection(candidateDrafts[0].section);
+          const semNum = Number(selectedSemester);
+          const yrNum = Number(selectedYear);
+          const matchingDraft = candidateDrafts.find(d => 
+            (d.semester ? Number(d.semester) === semNum : d.year === yrNum) && d.section === selectedSection
+          ) || candidateDrafts.find(d => 
+            (d.semester ? Number(d.semester) === semNum : d.year === yrNum)
+          ) || candidateDrafts[0];
+
+          setActiveDraftId(matchingDraft.id);
+          setSelectedYear(matchingDraft.year);
+          if (matchingDraft.semester) setSelectedSemester(matchingDraft.semester);
+          setSelectedSection(matchingDraft.section);
         }
 
         notify(`Successfully formulated ${candidateDrafts.length} draft timetables for ${department}!`, 'success');
@@ -467,17 +491,29 @@ export function TimetableProvider({ children }) {
 
     if (!sourceTT || !targetTT) return false;
 
-    const sourceData = sourceTT.grid?.[source.day]?.[source.slotId] || null;
-    const targetData = targetTT.grid?.[target.day]?.[target.slotId] || null;
+    const sPeriods = source.periods || [Number(source.slotId)];
+    const tPeriods = target.periods || [Number(target.slotId)];
 
-    if (sourceData) {
-      const c1 = checkOverlapConflict(actualTargetTimetableId, target.day, target.slotId, sourceData, sourceTimetableId, source);
-      if (c1) conflictWarning = c1;
+    if (sPeriods.length !== tPeriods.length) {
+      notify('Cannot swap blocks of unequal duration.', 'warning');
+      return false;
     }
 
-    if (targetData && !conflictWarning) {
-      const c2 = checkOverlapConflict(sourceTimetableId, source.day, source.slotId, targetData, actualTargetTimetableId, target);
-      if (c2) conflictWarning = c2;
+    // Check conflict across all periods in block
+    for (let i = 0; i < sPeriods.length; i++) {
+      const sp = sPeriods[i];
+      const tp = tPeriods[i];
+      const sourceData = sourceTT.grid?.[source.day]?.[sp] || null;
+      const targetData = targetTT.grid?.[target.day]?.[tp] || null;
+
+      if (sourceData) {
+        const c1 = checkOverlapConflict(actualTargetTimetableId, target.day, tp, sourceData, sourceTimetableId, { day: source.day, slotId: sp });
+        if (c1) { conflictWarning = c1; break; }
+      }
+      if (targetData) {
+        const c2 = checkOverlapConflict(sourceTimetableId, source.day, sp, targetData, actualTargetTimetableId, { day: target.day, slotId: tp });
+        if (c2) { conflictWarning = c2; break; }
+      }
     }
 
     if (conflictWarning) {
@@ -490,8 +526,8 @@ export function TimetableProvider({ children }) {
       await api.swapSlots({
         sourceTimetableId,
         targetTimetableId: actualTargetTimetableId,
-        source,
-        target
+        source: { day: source.day, slotId: source.slotId, periods: sPeriods },
+        target: { day: target.day, slotId: target.slotId, periods: tPeriods }
       });
     } catch (e) {
       console.error('Swap persistence error:', e);
@@ -501,32 +537,82 @@ export function TimetableProvider({ children }) {
       return prev.map(tt => {
         if (tt.id === sourceTimetableId && tt.id === actualTargetTimetableId) {
           const updatedGrid = JSON.parse(JSON.stringify(tt.grid));
-          updatedGrid[source.day][source.slotId] = targetData;
-          updatedGrid[target.day][target.slotId] = sourceData;
+          const sCells = sPeriods.map(p => updatedGrid[source.day]?.[p] || null);
+          const tCells = tPeriods.map(p => updatedGrid[target.day]?.[p] || null);
+
+          for (let i = 0; i < sPeriods.length; i++) {
+            const sp = sPeriods[i];
+            const tp = tPeriods[i];
+            let sc = sCells[i] ? { ...sCells[i] } : null;
+            let tc = tCells[i] ? { ...tCells[i] } : null;
+
+            if (sc && (sc.isLab || sc.type === 'lab')) {
+              sc.isLabStart = (i === 0);
+              sc.isLabContinuation = (i > 0);
+              sc.labInstanceId = `lab_${sc.subjectCode}_${target.day}_${tPeriods[0]}`;
+              sc.id = `slot_${target.day}_${tp}_${tt.year}_${tt.section}`;
+            }
+            if (tc && (tc.isLab || tc.type === 'lab')) {
+              tc.isLabStart = (i === 0);
+              tc.isLabContinuation = (i > 0);
+              tc.labInstanceId = `lab_${tc.subjectCode}_${source.day}_${sPeriods[0]}`;
+              tc.id = `slot_${source.day}_${sp}_${tt.year}_${tt.section}`;
+            }
+
+            if (updatedGrid[source.day]) updatedGrid[source.day][sp] = tc;
+            if (updatedGrid[target.day]) updatedGrid[target.day][tp] = sc;
+          }
           return { ...tt, grid: updatedGrid, lastUpdated: new Date().toISOString(), hasUnsavedEdits: true };
         }
+
         if (tt.id === sourceTimetableId) {
           const updatedGrid = JSON.parse(JSON.stringify(tt.grid));
-          updatedGrid[source.day][source.slotId] = targetData;
+          const tCells = tPeriods.map(p => targetTT.grid?.[target.day]?.[p] || null);
+
+          for (let i = 0; i < sPeriods.length; i++) {
+            const sp = sPeriods[i];
+            let tc = tCells[i] ? { ...tCells[i] } : null;
+            if (tc && (tc.isLab || tc.type === 'lab')) {
+              tc.isLabStart = (i === 0);
+              tc.isLabContinuation = (i > 0);
+              tc.labInstanceId = `lab_${tc.subjectCode}_${source.day}_${sPeriods[0]}`;
+              tc.id = `slot_${source.day}_${sp}_${tt.year}_${tt.section}`;
+            }
+            if (updatedGrid[source.day]) updatedGrid[source.day][sp] = tc;
+          }
           return { ...tt, grid: updatedGrid, lastUpdated: new Date().toISOString(), hasUnsavedEdits: true };
         }
+
         if (tt.id === actualTargetTimetableId) {
           const updatedGrid = JSON.parse(JSON.stringify(tt.grid));
-          updatedGrid[target.day][target.slotId] = sourceData;
+          const sCells = sPeriods.map(p => sourceTT.grid?.[source.day]?.[p] || null);
+
+          for (let i = 0; i < tPeriods.length; i++) {
+            const tp = tPeriods[i];
+            let sc = sCells[i] ? { ...sCells[i] } : null;
+            if (sc && (sc.isLab || sc.type === 'lab')) {
+              sc.isLabStart = (i === 0);
+              sc.isLabContinuation = (i > 0);
+              sc.labInstanceId = `lab_${sc.subjectCode}_${target.day}_${tPeriods[0]}`;
+              sc.id = `slot_${target.day}_${tp}_${tt.year}_${tt.section}`;
+            }
+            if (updatedGrid[target.day]) updatedGrid[target.day][tp] = sc;
+          }
           return { ...tt, grid: updatedGrid, lastUpdated: new Date().toISOString(), hasUnsavedEdits: true };
         }
+
         return tt;
       });
     });
 
     setLastConflictAlert(null);
-    const isCross = sourceTimetableId !== actualTargetTimetableId;
-    notify(
-      isCross 
-        ? `Conflict-free swap executed between ${source.day} P${source.slotId} and target ${target.day} P${target.slotId}` 
-        : `Slots swapped successfully on ${source.day} between P${source.slotId} and P${target.slotId}`, 
-      'success'
-    );
+    const isLabMove = sPeriods.length > 1;
+    const msg = isLabMove
+      ? `Successfully moved entire ${sPeriods.length}-hour laboratory block to ${target.day} (Periods ${tPeriods[0]}-${tPeriods[tPeriods.length - 1]})!`
+      : (sourceTimetableId !== actualTargetTimetableId
+          ? `Conflict-free swap executed between ${source.day} P${source.slotId} and target ${target.day} P${target.slotId}`
+          : `Slots swapped successfully on ${source.day} between P${source.slotId} and P${target.slotId}`);
+    notify(msg, 'success');
     return true;
   };
 

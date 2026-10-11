@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { api } from '../../services/api';
 import { X, ShieldCheck, User, Lock, Mail, ArrowRight, GraduationCap, Briefcase, KeyRound, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { CoatedPerson, BagCarryingPerson } from '../common/RoleIcons';
 import PasswordStrengthIndicator, { checkPasswordStrength } from './PasswordStrengthIndicator';
 
 const SEMESTERS = [
@@ -312,26 +313,28 @@ export default function AuthModal() {
             </div>
           </div>
 
-          <div className={`flex rounded-xl p-1 mt-4 border ${
-            isDark ? 'bg-[#151c2e] border-[#243048]' : 'bg-white border-slate-200'
-          }`}>
-            <button onClick={() => { setAuthModalTab('login'); setError(''); setSuccessMsg(''); }}
-              className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
-                authModalTab === 'login' 
-                  ? 'bg-blue-600 text-white shadow-md' 
-                  : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
-              }`}>
-              Sign In
-            </button>
-            <button onClick={() => { setAuthModalTab('signup'); setError(''); setSuccessMsg(''); }}
-              className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
-                authModalTab === 'signup' 
-                  ? 'bg-blue-600 text-white shadow-md' 
-                  : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
-              }`}>
-              Create Account
-            </button>
-          </div>
+          {authModalTab !== 'forgot' && (
+            <div className={`flex rounded-xl p-1 mt-4 border ${
+              isDark ? 'bg-[#151c2e] border-[#243048]' : 'bg-white border-slate-200'
+            }`}>
+              <button onClick={() => { setAuthModalTab('login'); setError(''); setSuccessMsg(''); }}
+                className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
+                  authModalTab === 'login' 
+                    ? 'bg-blue-600 text-white shadow-md' 
+                    : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                }`}>
+                Sign In
+              </button>
+              <button onClick={() => { setAuthModalTab('signup'); setError(''); setSuccessMsg(''); }}
+                className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
+                  authModalTab === 'signup' 
+                    ? 'bg-blue-600 text-white shadow-md' 
+                    : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                }`}>
+                Create Account
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Body */}
@@ -361,7 +364,7 @@ export default function AuthModal() {
                       ? 'border-blue-500 bg-blue-500/15 text-white ring-1 ring-blue-500/50 shadow-md font-bold' 
                       : isDark ? 'border-[#1e293b] text-slate-400 hover:border-[#2f3d58] bg-[#0b0f17]/70' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}>
-                  <ShieldCheck className="w-4 h-4 text-blue-500" />
+                  <CoatedPerson className="w-4 h-4 text-blue-500" />
                   <span>HoD</span>
                 </button>
 
@@ -371,7 +374,7 @@ export default function AuthModal() {
                       ? 'border-blue-600 bg-blue-900/30 text-white ring-1 ring-blue-500/50 shadow-md font-bold' 
                       : isDark ? 'border-[#1e293b] text-slate-400 hover:border-[#2f3d58] bg-[#0b0f17]/70' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}>
-                  <Briefcase className="w-4 h-4 text-blue-400" />
+                  <User className="w-4 h-4 text-blue-400" />
                   <span>Professor</span>
                 </button>
 
@@ -381,7 +384,7 @@ export default function AuthModal() {
                       ? 'border-blue-600 bg-blue-900/30 text-white ring-1 ring-blue-500/50 shadow-md font-bold' 
                       : isDark ? 'border-[#1e293b] text-slate-400 hover:border-[#2f3d58] bg-[#0b0f17]/70' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}>
-                  <User className="w-4 h-4 text-blue-400" />
+                  <BagCarryingPerson className="w-4 h-4 text-blue-400" />
                   <span>Student</span>
                 </button>
               </div>
@@ -450,7 +453,7 @@ export default function AuthModal() {
               {/* Portal 3: Student Login */}
               {activePortal === 'STUDENT' && (
                 <div>
-                  <label className={`block text-xs font-black uppercase tracking-wider mb-1.5 ${isDark ? 'text-emerald-400' : 'text-emerald-800'}`}>
+                  <label className={`block text-xs font-black uppercase tracking-wider mb-1.5 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>
                     Student Institutional Email
                   </label>
                   <div className="relative">
@@ -459,8 +462,8 @@ export default function AuthModal() {
                       type="email" 
                       value={email} 
                       onChange={e => setEmail(e.target.value)} 
-                      placeholder="student.it@nitk.edu.in"
-                      className={`w-full pl-10 pr-3.5 py-2.5 border rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 ${
+                      placeholder="sankalp@nitk.edu.in"
+                      className={`w-full pl-10 pr-3.5 py-2.5 border rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 ${
                         isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
                       }`}
                     />
@@ -506,7 +509,7 @@ export default function AuthModal() {
                 disabled={loading}
                 className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-black flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 transition-all active:scale-95 disabled:opacity-50"
               >
-                <span>{loading ? 'Verifying with Database...' : 'Sign In'}</span>
+                <span>{loading ? 'Verifying...' : 'Sign In'}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </form>
@@ -522,8 +525,7 @@ export default function AuthModal() {
                   <ArrowLeft className="w-4 h-4" />
                 </button>
                 <div>
-                  <h3 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>Reset Account Password</h3>
-                  <p className="text-xs text-slate-400">Enter your institutional email and set your new password</p>
+                  <h3 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>Reset Password</h3>
                 </div>
               </div>
 
@@ -537,7 +539,7 @@ export default function AuthModal() {
                     type="email" 
                     value={forgotEmail} 
                     onChange={e => setForgotEmail(e.target.value)} 
-                    placeholder="e.g. professor.dept@nitk.edu.in"
+                    placeholder="abhi@nitk.edu.in"
                     required
                     className={`w-full pl-10 pr-3.5 py-2.5 border rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 ${
                       isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
@@ -590,7 +592,6 @@ export default function AuthModal() {
                 disabled={loading}
                 className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-black flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 transition-all active:scale-95 disabled:opacity-50"
               >
-                <KeyRound className="w-4 h-4" />
                 <span>{loading ? 'Updating Password...' : 'Reset Password'}</span>
               </button>
 
@@ -598,9 +599,9 @@ export default function AuthModal() {
                 <button 
                   type="button" 
                   onClick={() => { setAuthModalTab('login'); setError(''); setSuccessMsg(''); }}
-                  className="text-xs text-slate-400 hover:text-white transition-colors"
+                  className="text-xs sm:text-sm text-blue-400 hover:text-blue-300 underline font-semibold transition-colors"
                 >
-                  Remember your credentials? <span className="text-blue-400 underline font-semibold">Back to Sign In</span>
+                  Back to Login
                 </button>
               </div>
             </form>
@@ -667,7 +668,7 @@ export default function AuthModal() {
                       type="email" 
                       value={email} 
                       onChange={e => setEmail(e.target.value)} 
-                      placeholder="faculty.dept@nitk.edu.in"
+                      placeholder="ravi@nitk.edu.in"
                       required
                       className={`w-full px-3.5 py-2 border rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 ${
                         isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
@@ -724,7 +725,7 @@ export default function AuthModal() {
                   </div>
                   <div>
                     <label className={`block text-xs font-black uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>Email Address</label>
-                    <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="student.it@nitk.edu.in"
+                    <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="sankalp@nitk.edu.in"
                       className={`w-full px-3.5 py-2 border rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 ${
                         isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
                       }`} />

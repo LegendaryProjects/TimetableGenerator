@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e3a8a"/>
+      <stop offset="50%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde047"/>
+      <stop offset="100%" stop-color="#eab308"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Rounded App Icon Background -->
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#bgGrad)" stroke="#60a5fa" stroke-width="1.5"/>
+
+  <!-- Calendar / Timetable Grid Base -->
+  <g filter="url(#shadow)">
+    <!-- Calendar Header Bar -->
+    <rect x="12" y="16" width="40" height="36" rx="6" fill="#ffffff" fill-opacity="0.96"/>
+    <path d="M12 22 C12 18.686 14.686 16 18 16 L46 16 C49.314 16 52 18.686 52 22 L52 26 L12 26 Z" fill="#1d4ed8"/>
+    
+    <!-- Top Binders -->
+    <rect x="20" y="13" width="4" height="6" rx="2" fill="#93c5fd"/>
+    <rect x="40" y="13" width="4" height="6" rx="2" fill="#93c5fd"/>
+
+    <!-- Timetable Grid Cells -->
+    <!-- Row 1 -->
+    <rect x="17" y="30" width="7" height="5" rx="1.5" fill="#3b82f6" fill-opacity="0.25"/>
+    <rect x="26" y="30" width="12" height="5" rx="1.5" fill="#2563eb"/>
+    <rect x="40" y="30" width="7" height="5" rx="1.5" fill="#3b82f6" fill-opacity="0.25"/>
+
+    <!-- Row 2 -->
+    <rect x="17" y="38" width="12" height="5" rx="1.5" fill="#3b82f6"/>
+    <rect x="31" y="38" width="7" height="5" rx="1.5" fill="#3b82f6" fill-opacity="0.25"/>
+    <rect x="40" y="38" width="7" height="5" rx="1.5" fill="#2563eb"/>
+
+    <!-- Row 3 -->
+    <rect x="17" y="45" width="7" height="4" rx="1.5" fill="#3b82f6" fill-opacity="0.25"/>
+    <rect x="26" y="45" width="7" height="4" rx="1.5" fill="#2563eb"/>
+    <rect x="35" y="45" width="12" height="4" rx="1.5" fill="#3b82f6"/>
+  </g>
+
+  <!-- Golden Graduation Cap Emblem (Academic Symbol) -->
+  <g transform="translate(38, 38) scale(0.68)" filter="url(#shadow)">
+    <!-- Cap Diamond -->
+    <polygon points="18,3 34,9 18,15 2,9" fill="url(#goldGrad)" stroke="#ca8a04" stroke-width="1"/>
+    <!-- Cap Skull Base -->
+    <path d="M7 11.5 L7 17.5 C7 21 11.9 23.5 18 23.5 C24.1 23.5 29 21 29 17.5 L29 11.5 L18 15.5 Z" fill="#ca8a04"/>
+    <path d="M9 13 L9 17 C9 19.5 13 21.5 18 21.5 C23 21.5 27 19.5 27 17 L27 13 L18 16.5 Z" fill="url(#goldGrad)"/>
+    <!-- Tassel -->
+    <path d="M18 9 L31 13 L31 22" fill="none" stroke="#fef08a" stroke-width="1.8" stroke-linecap="round"/>
+    <circle cx="31" cy="22.5" r="1.5" fill="#fef08a"/>
+  </g>
+</svg>

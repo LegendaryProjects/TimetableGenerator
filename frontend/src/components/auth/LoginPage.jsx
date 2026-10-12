@@ -404,8 +404,8 @@ export default function LoginPage() {
             isDark ? 'opacity-100' : 'opacity-0'
           }`} />
 
-          {/* Light Mode: Soft dark-to-light gradient blend into light background */}
-          <div className={`absolute top-0 bottom-0 right-0 w-32 xl:w-48 pointer-events-none transition-opacity duration-700 bg-gradient-to-r from-transparent via-slate-900/20 to-slate-50 ${
+          {/* Light Mode: Multi-stop image -> dark -> dark -> light gradient merging */}
+          <div className={`absolute top-0 bottom-0 right-0 w-44 xl:w-64 pointer-events-none transition-opacity duration-700 bg-gradient-to-r from-transparent via-slate-950/75 via-slate-900/50 to-slate-50 ${
             !isDark ? 'opacity-100' : 'opacity-0'
           }`} />
         </div>

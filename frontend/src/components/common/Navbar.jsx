@@ -96,7 +96,7 @@ export default function Navbar() {
             aria-label="Toggle theme"
           >
             {isDark ? (
-              <Sun className="w-4 h-4 text-blue-400" />
+              <Sun className="w-4 h-4 text-orange-400" />
             ) : (
               <Moon className="w-4 h-4 text-slate-600" />
             )}

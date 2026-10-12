@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
-import { ShieldCheck, User, Lock, Mail, ArrowRight, GraduationCap, Briefcase, Building2, Award, KeyRound, CheckCircle2, ArrowLeft, Clock, RefreshCw } from 'lucide-react';
+import { ShieldCheck, User, Lock, Mail, ArrowRight, GraduationCap, Briefcase, Building2, Award, KeyRound, CheckCircle2, ArrowLeft, Clock, RefreshCw, Sun, Moon } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
 import { CoatedPerson, BagCarryingPerson } from '../common/RoleIcons';
 import campusImage from '../../assets/nitk-campus.jpg';
 import PasswordStrengthIndicator, { checkPasswordStrength } from './PasswordStrengthIndicator';
@@ -21,7 +22,7 @@ const SECTIONS = ['A', 'B', 'C', 'D'];
 
 export default function LoginPage() {
   const { login, signup, departmentHods } = useAuth();
-  const isDark = true; // Exclusively dark theme for Login Page
+  const { isDark, toggleTheme } = useTheme();
 
   const [activeTab, setActiveTab] = useState('login'); // 'login' | 'signup' | 'forgot'
   const [activePortal, setActivePortal] = useState('HOD'); // 'HOD' | 'FACULTY' | 'STUDENT'
@@ -378,7 +379,11 @@ export default function LoginPage() {
           <div className="absolute inset-0 bg-blue-950/20 mix-blend-multiply" />
           
           {/* Smooth Soft Gradient Transition from Image to Form (Right Edge) */}
-          <div className={`absolute top-0 bottom-0 right-0 w-36 xl:w-48 pointer-events-none transition-colors duration-200 bg-gradient-to-r from-transparent via-[#080b12]/60 to-[#080b12]`} />
+          <div className={`absolute top-0 bottom-0 right-0 w-36 xl:w-48 pointer-events-none transition-colors duration-200 ${
+            isDark 
+              ? 'bg-gradient-to-r from-transparent via-[#080b12]/60 to-[#080b12]' 
+              : 'bg-gradient-to-r from-transparent via-slate-50/60 to-slate-50'
+          }`} />
         </div>
 
         {/* Top Header on Image */}
@@ -438,22 +443,60 @@ export default function LoginPage() {
       <div className="w-full lg:w-1/2 xl:w-5/12 flex flex-col justify-between px-6 pt-6 pb-2.5 sm:px-10 sm:pt-8 sm:pb-3 lg:px-12 lg:pt-8 lg:pb-3 overflow-y-auto">
         
         {/* Mobile Header Branding */}
-        <div className="lg:hidden flex items-center gap-3 mb-6">
-          <div className="p-2.5 rounded-2xl bg-blue-600 text-white shadow-md">
-            <GraduationCap className="w-6 h-6" />
+        <div className="lg:hidden flex items-center justify-between gap-3 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-blue-600 text-white shadow-md">
+              <GraduationCap className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className={`text-lg font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>NITK AutoTTGen</h1>
+              <p className={`text-xs font-semibold ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>National Institute of Technology Karnataka</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-lg font-bold tracking-tight text-white">NITK AutoTTGen</h1>
-            <p className="text-xs text-blue-400 font-semibold">National Institute of Technology Karnataka</p>
-          </div>
+          <button
+            onClick={toggleTheme}
+            className={`p-2.5 rounded-xl border flex items-center justify-center transition-all ${
+              isDark 
+                ? 'bg-[#0f172a] hover:bg-[#1e293b] border-[#1e293b] text-slate-300' 
+                : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700 shadow-sm'
+            }`}
+            title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            aria-label="Toggle theme"
+          >
+            {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-blue-600" />}
+          </button>
         </div>
 
         <div className="max-w-md w-full mx-auto my-auto space-y-6">
           
-          <div className="text-center lg:text-left">
-            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+          <div className="flex items-center justify-between">
+            <h2 className={`text-2xl sm:text-3xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
               {activeTab === 'login' ? 'Sign In' : activeTab === 'forgot' ? 'Reset Password' : 'Create Account'}
             </h2>
+
+            {/* Desktop Theme Toggle Button */}
+            <button
+              onClick={toggleTheme}
+              className={`hidden lg:flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-all ${
+                isDark 
+                  ? 'bg-[#0f1422] hover:bg-[#1a233a] border-[#1e293b] text-slate-300' 
+                  : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700 shadow-sm hover:shadow'
+              }`}
+              title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              aria-label="Toggle theme"
+            >
+              {isDark ? (
+                <>
+                  <Sun className="w-4 h-4 text-amber-400" />
+                  <span>Light</span>
+                </>
+              ) : (
+                <>
+                  <Moon className="w-4 h-4 text-blue-600" />
+                  <span>Dark</span>
+                </>
+              )}
+            </button>
           </div>
 
           <div className={`rounded-3xl border shadow-xl overflow-hidden transition-colors ${
@@ -516,30 +559,36 @@ export default function LoginPage() {
                     <button type="button" onClick={() => { setActivePortal('HOD'); setError(''); }}
                       className={`p-2.5 rounded-xl border text-center text-xs flex flex-col items-center gap-1 transition-all ${
                         activePortal === 'HOD' 
-                          ? 'border-blue-500 bg-blue-500/15 text-white ring-1 ring-blue-500/50 shadow-md font-bold' 
-                          : isDark ? 'border-[#1e293b] text-slate-400 hover:border-[#2f3d58] bg-[#0b0f17]/70' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                          ? isDark 
+                            ? 'border-blue-500 bg-blue-500/15 text-white ring-1 ring-blue-500/50 shadow-md font-bold' 
+                            : 'border-blue-600 bg-blue-50 text-blue-900 ring-2 ring-blue-500 shadow-sm font-bold'
+                          : isDark ? 'border-[#1e293b] text-slate-400 hover:border-[#2f3d58] bg-[#0b0f17]/70' : 'border-slate-200 text-slate-600 hover:bg-slate-100 bg-slate-50/50'
                       }`}>
-                      <CoatedPerson className="w-4 h-4 text-blue-500" />
+                      <CoatedPerson className={`w-4 h-4 ${activePortal === 'HOD' ? (isDark ? 'text-blue-400' : 'text-blue-600') : (isDark ? 'text-slate-400' : 'text-slate-500')}`} />
                       <span>HoD</span>
                     </button>
 
                     <button type="button" onClick={() => { setActivePortal('FACULTY'); setError(''); }}
                       className={`p-2.5 rounded-xl border text-center text-xs flex flex-col items-center gap-1 transition-all ${
                         activePortal === 'FACULTY' 
-                          ? 'border-blue-600 bg-blue-900/30 text-white ring-1 ring-blue-500/50 shadow-md font-bold' 
-                          : isDark ? 'border-[#1e293b] text-slate-400 hover:border-[#2f3d58] bg-[#0b0f17]/70' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                          ? isDark 
+                            ? 'border-blue-500 bg-blue-500/15 text-white ring-1 ring-blue-500/50 shadow-md font-bold' 
+                            : 'border-blue-600 bg-blue-50 text-blue-900 ring-2 ring-blue-500 shadow-sm font-bold'
+                          : isDark ? 'border-[#1e293b] text-slate-400 hover:border-[#2f3d58] bg-[#0b0f17]/70' : 'border-slate-200 text-slate-600 hover:bg-slate-100 bg-slate-50/50'
                       }`}>
-                      <User className="w-4 h-4 text-blue-400" />
+                      <User className={`w-4 h-4 ${activePortal === 'FACULTY' ? (isDark ? 'text-blue-400' : 'text-blue-600') : (isDark ? 'text-slate-400' : 'text-slate-500')}`} />
                       <span>Professor</span>
                     </button>
 
                     <button type="button" onClick={() => { setActivePortal('STUDENT'); setError(''); }}
                       className={`p-2.5 rounded-xl border text-center text-xs flex flex-col items-center gap-1 transition-all ${
                         activePortal === 'STUDENT' 
-                          ? 'border-blue-600 bg-blue-900/30 text-white ring-1 ring-blue-500/50 shadow-md font-bold' 
-                          : isDark ? 'border-[#1e293b] text-slate-400 hover:border-[#2f3d58] bg-[#0b0f17]/70' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                          ? isDark 
+                            ? 'border-blue-500 bg-blue-500/15 text-white ring-1 ring-blue-500/50 shadow-md font-bold' 
+                            : 'border-blue-600 bg-blue-50 text-blue-900 ring-2 ring-blue-500 shadow-sm font-bold'
+                          : isDark ? 'border-[#1e293b] text-slate-400 hover:border-[#2f3d58] bg-[#0b0f17]/70' : 'border-slate-200 text-slate-600 hover:bg-slate-100 bg-slate-50/50'
                       }`}>
-                      <BagCarryingPerson className="w-4 h-4 text-blue-400" />
+                      <BagCarryingPerson className={`w-4 h-4 ${activePortal === 'STUDENT' ? (isDark ? 'text-blue-400' : 'text-blue-600') : (isDark ? 'text-slate-400' : 'text-slate-500')}`} />
                       <span>Student</span>
                     </button>
                   </div>
@@ -547,14 +596,14 @@ export default function LoginPage() {
                   {/* Portal 1: HoD Login */}
                   {activePortal === 'HOD' && (
                     <div>
-                      <label className={`block text-xs font-black uppercase tracking-wider mb-1.5 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
                         Select Department HoD
                       </label>
                       <select 
                         value={selectedHodId} 
                         onChange={e => setSelectedHodId(e.target.value)}
-                        className={`w-full px-3.5 py-2.5 border rounded-xl text-sm font-bold focus:outline-none focus:border-blue-500 ${
-                          isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
+                        className={`w-full px-3.5 py-2.5 border rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
                         }`}
                       >
                         {departmentHods.map(h => (
@@ -568,14 +617,14 @@ export default function LoginPage() {
                   {activePortal === 'FACULTY' && (
                     <div className="space-y-3">
                       <div>
-                        <label className={`block text-xs font-black uppercase tracking-wider mb-1.5 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>
+                        <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
                           Step 1: Department
                         </label>
                         <select 
                           value={facultyDept} 
                           onChange={e => handleFacultyDeptChange(e.target.value)}
-                          className={`w-full px-3.5 py-2.5 border rounded-xl text-sm font-bold focus:outline-none focus:border-blue-500 ${
-                            isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
+                          className={`w-full px-3.5 py-2.5 border rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                            isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
                           }`}
                         >
                           <option value="">Select Department</option>
@@ -586,15 +635,15 @@ export default function LoginPage() {
                       </div>
 
                       <div>
-                        <label className={`block text-xs font-black uppercase tracking-wider mb-1.5 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>
+                        <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
                           Step 2: Faculty Member
                         </label>
                         <select 
                           value={selectedProfEmail} 
                           disabled={!facultyDept}
                           onChange={e => setSelectedProfEmail(e.target.value)}
-                          className={`w-full px-3.5 py-2.5 border rounded-xl text-sm font-bold focus:outline-none focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed ${
-                            isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
+                          className={`w-full px-3.5 py-2.5 border rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed ${
+                            isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
                           }`}
                         >
                           {!facultyDept ? (
@@ -617,18 +666,18 @@ export default function LoginPage() {
                   {/* Portal 3: Student Login */}
                   {activePortal === 'STUDENT' && (
                     <div>
-                      <label className={`block text-xs font-black uppercase tracking-wider mb-1.5 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
                         Student Institutional Email
                       </label>
                       <div className="relative">
-                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Mail className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
                         <input 
                           type="email" 
                           value={email} 
                           onChange={e => setEmail(e.target.value)} 
                           placeholder="sankalp@nitk.edu.in"
-                          className={`w-full pl-10 pr-3.5 py-2.5 border rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 ${
-                            isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
+                          className={`w-full pl-10 pr-3.5 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                            isDark ? 'bg-[#151c2e] border-[#243048] text-white placeholder-slate-500' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
                           }`}
                         />
                       </div>
@@ -638,7 +687,7 @@ export default function LoginPage() {
                   {/* Password with Forgot Password link */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <label className={`block text-xs font-black uppercase tracking-wider ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>
+                      <label className={`block text-xs font-bold uppercase tracking-wider ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
                         Password
                       </label>
                       <button 
@@ -652,20 +701,22 @@ export default function LoginPage() {
                           setSuccessMsg('');
                           setForgotEmail(activePortal === 'FACULTY' ? selectedProfEmail : (activePortal === 'STUDENT' ? email : ''));
                         }}
-                        className="text-xs text-blue-400 hover:text-blue-300 font-semibold underline transition-colors"
+                        className={`text-xs font-semibold underline transition-colors ${
+                          isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'
+                        }`}
                       >
                         Forgot password?
                       </button>
                     </div>
                     <div className="relative">
-                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <Lock className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
                       <input 
                         type="password" 
                         value={password} 
                         onChange={e => setPassword(e.target.value)} 
                         placeholder="••••••••"
-                        className={`w-full pl-10 pr-3.5 py-2.5 border rounded-xl text-sm placeholder-slate-500/40 focus:outline-none focus:border-blue-500 ${
-                          isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
+                        className={`w-full pl-10 pr-3.5 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          isDark ? 'bg-[#151c2e] border-[#243048] text-white placeholder-slate-500/40' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
                         }`}
                       />
                     </div>
@@ -683,7 +734,7 @@ export default function LoginPage() {
               ) : activeTab === 'forgot' ? (
                 /* Forgot Password View (OTP Flow) */
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between pb-1 border-b border-slate-800/60">
+                  <div className={`flex items-center justify-between pb-2 border-b ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
                     <div className="flex items-center gap-2.5">
                       <button 
                         type="button" 
@@ -698,14 +749,16 @@ export default function LoginPage() {
                             setSuccessMsg(''); 
                           }
                         }}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors"
+                        className={`p-1.5 rounded-lg transition-colors ${
+                          isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800/60' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                        }`}
                         title="Back"
                       >
                         <ArrowLeft className="w-4 h-4" />
                       </button>
                       <div>
-                        <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                          <KeyRound className="w-4 h-4 text-blue-400" />
+                        <h3 className={`text-sm font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                          <KeyRound className="w-4 h-4 text-blue-500" />
                           <span>Reset Password</span>
                         </h3>
                       </div>
@@ -717,11 +770,11 @@ export default function LoginPage() {
                     <form onSubmit={handleSendOtp} className="space-y-4 pt-1">
 
                       <div>
-                        <label className={`block text-xs font-black uppercase tracking-wider mb-1.5 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>
+                        <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
                           Institutional Email Address
                         </label>
                         <div className="relative">
-                          <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                          <Mail className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
                           <input 
                             type="email" 
                             value={forgotEmail} 
@@ -729,8 +782,8 @@ export default function LoginPage() {
                             placeholder="e.g. abhi@nitk.edu.in"
                             required
                             autoFocus
-                            className={`w-full pl-10 pr-3.5 py-2.5 border rounded-xl text-sm placeholder-slate-500/50 focus:outline-none focus:border-blue-500 ${
-                              isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
+                            className={`w-full pl-10 pr-3.5 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                              isDark ? 'bg-[#151c2e] border-[#243048] text-white placeholder-slate-500' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
                             }`} 
                           />
                         </div>
@@ -749,7 +802,9 @@ export default function LoginPage() {
                         <button 
                           type="button" 
                           onClick={() => { setActiveTab('login'); setError(''); setSuccessMsg(''); }}
-                          className="text-xs sm:text-sm text-blue-400 hover:text-blue-300 underline font-semibold transition-colors"
+                          className={`text-xs sm:text-sm underline font-semibold transition-colors ${
+                            isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'
+                          }`}
                         >
                           Back to Login
                         </button>
@@ -759,15 +814,19 @@ export default function LoginPage() {
                     /* Step 2: Enter OTP & New Password */
                     <form onSubmit={handleVerifyAndReset} className="space-y-3.5 pt-1">
                       {/* Recipient info & Change Email */}
-                      <div className="flex items-center justify-between p-2.5 bg-slate-800/40 border border-slate-700/50 rounded-xl text-xs">
-                        <div className="flex items-center gap-2 text-slate-300 truncate mr-2">
-                          <Mail className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                      <div className={`flex items-center justify-between p-2.5 border rounded-xl text-xs ${
+                        isDark ? 'bg-slate-800/40 border-slate-700/50' : 'bg-slate-100/70 border-slate-200'
+                      }`}>
+                        <div className={`flex items-center gap-2 truncate mr-2 ${isDark ? 'text-slate-300' : 'text-slate-700 font-medium'}`}>
+                          <Mail className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                           <span className="truncate">{forgotEmail}</span>
                         </div>
                         <button
                           type="button"
                           onClick={() => { setForgotStep(1); setError(''); setSuccessMsg(''); }}
-                          className="text-[11px] text-blue-400 hover:text-blue-300 underline font-semibold shrink-0"
+                          className={`text-[11px] underline font-semibold shrink-0 ${
+                            isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'
+                          }`}
                         >
                           Change Email
                         </button>
@@ -775,9 +834,11 @@ export default function LoginPage() {
 
                       {/* Demo OTP Display */}
                       {demoOtpNotice && (
-                        <div className="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center justify-between text-xs">
-                          <span className="text-amber-300 font-medium">
-                            Demo OTP: <strong className="font-mono text-sm tracking-widest text-amber-200">{demoOtpNotice}</strong>
+                        <div className={`p-2.5 rounded-xl flex items-center justify-between text-xs border ${
+                          isDark ? 'bg-amber-500/10 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-300 text-amber-900'
+                        }`}>
+                          <span className="font-medium">
+                            Demo OTP: <strong className={`font-mono text-sm tracking-widest ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>{demoOtpNotice}</strong>
                           </span>
                         </div>
                       )}
@@ -785,12 +846,12 @@ export default function LoginPage() {
                       {/* 6-Digit OTP Input */}
                       <div>
                         <div className="flex items-center justify-between mb-1.5">
-                          <label className={`block text-xs font-black uppercase tracking-wider ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>
+                          <label className={`block text-xs font-bold uppercase tracking-wider ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
                             Verification Code
                           </label>
                           <div className="flex items-center gap-1 text-[11px]">
-                            <Clock className="w-3 h-3 text-slate-400" />
-                            <span className={otpExpiryTimer <= 60 ? 'text-red-400 font-bold' : 'text-slate-400 font-medium'}>
+                            <Clock className={`w-3 h-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+                            <span className={otpExpiryTimer <= 60 ? 'text-red-500 font-bold' : isDark ? 'text-slate-400 font-medium' : 'text-slate-600 font-medium'}>
                               {formatTimer(otpExpiryTimer)}
                             </span>
                           </div>
@@ -804,8 +865,8 @@ export default function LoginPage() {
                           placeholder="••••••"
                           required
                           autoFocus
-                          className={`w-full py-2.5 px-3 border rounded-xl text-center text-lg font-mono font-bold tracking-[0.4em] placeholder-slate-600 focus:outline-none focus:border-blue-500 ${
-                            isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
+                          className={`w-full py-2.5 px-3 border rounded-xl text-center text-lg font-mono font-bold tracking-[0.4em] focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                            isDark ? 'bg-[#151c2e] border-[#243048] text-white placeholder-slate-600' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
                           }`} 
                         />
                         <div className="flex items-center justify-end mt-1">
@@ -813,7 +874,11 @@ export default function LoginPage() {
                             type="button"
                             onClick={handleResendOtp}
                             disabled={resendCooldown > 0 || loading}
-                            className="text-[11px] font-semibold text-blue-400 hover:text-blue-300 disabled:text-slate-500 disabled:no-underline underline flex items-center gap-1 transition-colors"
+                            className={`text-[11px] font-semibold disabled:no-underline underline flex items-center gap-1 transition-colors ${
+                              isDark 
+                                ? 'text-blue-400 hover:text-blue-300 disabled:text-slate-600' 
+                                : 'text-blue-600 hover:text-blue-700 disabled:text-slate-400'
+                            }`}
                           >
                             <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
                             <span>
@@ -825,19 +890,19 @@ export default function LoginPage() {
 
                       {/* New Password */}
                       <div>
-                        <label className={`block text-xs font-black uppercase tracking-wider mb-1.5 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>
+                        <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
                           New Password
                         </label>
                         <div className="relative">
-                          <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                          <Lock className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
                           <input 
                             type="password" 
                             value={forgotNewPassword} 
                             onChange={e => setForgotNewPassword(e.target.value)} 
                             placeholder="Min 8 chars, letters, numbers, symbols"
                             required
-                            className={`w-full pl-10 pr-3.5 py-2.5 border rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 ${
-                              isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
+                            className={`w-full pl-10 pr-3.5 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                              isDark ? 'bg-[#151c2e] border-[#243048] text-white placeholder-slate-500' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
                             }`} 
                           />
                         </div>
@@ -846,19 +911,19 @@ export default function LoginPage() {
 
                       {/* Confirm New Password */}
                       <div>
-                        <label className={`block text-xs font-black uppercase tracking-wider mb-1.5 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>
+                        <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
                           Confirm New Password
                         </label>
                         <div className="relative">
-                          <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                          <Lock className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
                           <input 
                             type="password" 
                             value={forgotConfirmPassword} 
                             onChange={e => setForgotConfirmPassword(e.target.value)} 
                             placeholder="Repeat new password"
                             required
-                            className={`w-full pl-10 pr-3.5 py-2.5 border rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 ${
-                              isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
+                            className={`w-full pl-10 pr-3.5 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                              isDark ? 'bg-[#151c2e] border-[#243048] text-white placeholder-slate-500' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
                             }`} 
                           />
                         </div>
@@ -892,16 +957,24 @@ export default function LoginPage() {
                   <div className="grid grid-cols-2 gap-2.5">
                     <button type="button" onClick={() => setSignupRole('STUDENT')}
                       className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-                        signupRole === 'STUDENT' ? 'border-blue-600 bg-blue-900/30 text-blue-300 ring-1 ring-blue-500/40 shadow-sm' : 'border-slate-700 text-slate-400 hover:border-slate-600'
+                        signupRole === 'STUDENT' 
+                          ? isDark 
+                            ? 'border-blue-500 bg-blue-500/15 text-white ring-1 ring-blue-500/50 shadow-md' 
+                            : 'border-blue-600 bg-blue-50 text-blue-900 ring-2 ring-blue-500 shadow-sm'
+                          : isDark ? 'border-[#1e293b] text-slate-400 hover:border-[#2f3d58] bg-[#0b0f17]/70' : 'border-slate-200 text-slate-600 hover:bg-slate-100 bg-slate-50/50'
                       }`}>
-                      <BagCarryingPerson className="w-3.5 h-3.5 text-blue-400" />
+                      <BagCarryingPerson className={`w-3.5 h-3.5 ${signupRole === 'STUDENT' ? (isDark ? 'text-blue-400' : 'text-blue-600') : (isDark ? 'text-slate-400' : 'text-slate-500')}`} />
                       <span>Student</span>
                     </button>
                     <button type="button" onClick={() => setSignupRole('FACULTY')}
                       className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-                        signupRole === 'FACULTY' ? 'border-blue-600 bg-blue-900/30 text-blue-300 ring-1 ring-blue-500/40 shadow-sm' : 'border-slate-700 text-slate-400 hover:border-slate-600'
+                        signupRole === 'FACULTY' 
+                          ? isDark 
+                            ? 'border-blue-500 bg-blue-500/15 text-white ring-1 ring-blue-500/50 shadow-md' 
+                            : 'border-blue-600 bg-blue-50 text-blue-900 ring-2 ring-blue-500 shadow-sm'
+                          : isDark ? 'border-[#1e293b] text-slate-400 hover:border-[#2f3d58] bg-[#0b0f17]/70' : 'border-slate-200 text-slate-600 hover:bg-slate-100 bg-slate-50/50'
                       }`}>
-                      <User className="w-3.5 h-3.5 text-blue-400" />
+                      <User className={`w-3.5 h-3.5 ${signupRole === 'FACULTY' ? (isDark ? 'text-blue-400' : 'text-blue-600') : (isDark ? 'text-slate-400' : 'text-slate-500')}`} />
                       <span>Professor</span>
                     </button>
                   </div>
@@ -910,7 +983,7 @@ export default function LoginPage() {
                     /* Professor Sign Up */
                     <div className="space-y-3">
                       <div>
-                        <label className={`block text-xs font-black uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>
+                        <label className={`block text-xs font-bold uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
                           Full Name
                         </label>
                         <input 
@@ -919,14 +992,14 @@ export default function LoginPage() {
                           onChange={e => setName(e.target.value)} 
                           placeholder="e.g. Sankalp"
                           required
-                          className={`w-full px-3.5 py-2 border rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 ${
-                            isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
+                          className={`w-full px-3.5 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                            isDark ? 'bg-[#151c2e] border-[#243048] text-white placeholder-slate-500' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
                           }`} 
                         />
                       </div>
 
                       <div>
-                        <label className={`block text-xs font-black uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>
+                        <label className={`block text-xs font-bold uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
                           Institutional Email Address
                         </label>
                         <input 
@@ -935,22 +1008,22 @@ export default function LoginPage() {
                           onChange={e => setEmail(e.target.value)} 
                           placeholder="ravi@nitk.edu.in"
                           required
-                          className={`w-full px-3.5 py-2 border rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 ${
-                            isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
+                          className={`w-full px-3.5 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                            isDark ? 'bg-[#151c2e] border-[#243048] text-white placeholder-slate-500' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
                           }`} 
                         />
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                         <div>
-                          <label className={`block text-xs font-black uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>
+                          <label className={`block text-xs font-bold uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
                             Department
                           </label>
                           <select 
                             value={department} 
                             onChange={e => setDepartment(e.target.value)}
-                            className={`w-full px-3 py-2 border rounded-xl text-sm font-bold focus:outline-none ${
-                              isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
+                            className={`w-full px-3 py-2 border rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                              isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
                             }`}
                           >
                             {departments.map(d => (
@@ -960,14 +1033,14 @@ export default function LoginPage() {
                         </div>
 
                         <div>
-                          <label className={`block text-xs font-black uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>
+                          <label className={`block text-xs font-bold uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
                             Designation
                           </label>
                           <select 
                             value={designation} 
                             onChange={e => setDesignation(e.target.value)}
-                            className={`w-full px-3 py-2 border rounded-xl text-sm font-bold focus:outline-none ${
-                              isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
+                            className={`w-full px-3 py-2 border rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                              isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
                             }`}
                           >
                             <option value="Professor">Professor</option>
@@ -982,47 +1055,47 @@ export default function LoginPage() {
                     /* Student Sign Up */
                     <>
                       <div>
-                        <label className={`block text-xs font-black uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>Full Name</label>
+                        <label className={`block text-xs font-bold uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>Full Name</label>
                         <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Full Name"
-                          className={`w-full px-3.5 py-2 border rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 ${
-                            isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
+                          className={`w-full px-3.5 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                            isDark ? 'bg-[#151c2e] border-[#243048] text-white placeholder-slate-500' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
                           }`} />
                       </div>
 
                       <div>
-                        <label className={`block text-xs font-black uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>Email Address</label>
+                        <label className={`block text-xs font-bold uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>Email Address</label>
                         <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="sankalp@nitk.edu.in"
-                          className={`w-full px-3.5 py-2 border rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 ${
-                            isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
+                          className={`w-full px-3.5 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                            isDark ? 'bg-[#151c2e] border-[#243048] text-white placeholder-slate-500' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
                           }`} />
                       </div>
 
                       <div className="flex items-center gap-2.5">
                         <div className="flex-1">
-                          <label className={`block text-xs font-black uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>Department</label>
+                          <label className={`block text-xs font-bold uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>Department</label>
                           <select value={department} onChange={e => setDepartment(e.target.value)}
-                            className={`w-full px-2.5 py-2 border rounded-xl text-sm font-bold focus:outline-none ${
-                              isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
+                            className={`w-full px-2.5 py-2 border rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                              isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
                             }`}
                           >
                             {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                           </select>
                         </div>
                         <div className="w-24">
-                          <label className={`block text-xs font-black uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>Sem</label>
+                          <label className={`block text-xs font-bold uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>Sem</label>
                           <select value={semester} onChange={e => setSemester(e.target.value)}
-                            className={`w-full px-2.5 py-2 border rounded-xl text-sm font-bold focus:outline-none ${
-                              isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
+                            className={`w-full px-2.5 py-2 border rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                              isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
                             }`}
                           >
                             {SEMESTERS.map(s => <option key={s.id} value={s.value}>{s.label}</option>)}
                           </select>
                         </div>
                         <div className="w-20">
-                          <label className={`block text-xs font-black uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>Sec</label>
+                          <label className={`block text-xs font-bold uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>Sec</label>
                           <select value={section} onChange={e => setSection(e.target.value)}
-                            className={`w-full px-2.5 py-2 border rounded-xl text-sm font-bold focus:outline-none ${
-                              isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
+                            className={`w-full px-2.5 py-2 border rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                              isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
                             }`}
                           >
                             {SECTIONS.slice(0, 3).map(s => <option key={s} value={s}>{s}</option>)}
@@ -1033,10 +1106,10 @@ export default function LoginPage() {
                   )}
 
                   <div>
-                    <label className={`block text-xs font-black uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>Password</label>
+                    <label className={`block text-xs font-bold uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>Password</label>
                     <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Min 8 chars, letters, numbers, symbols"
-                      className={`w-full px-3.5 py-2 border rounded-xl text-sm placeholder-slate-500/40 focus:outline-none focus:border-blue-500 ${
-                        isDark ? 'bg-[#151c2e] border-[#243048] text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
+                      className={`w-full px-3.5 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        isDark ? 'bg-[#151c2e] border-[#243048] text-white placeholder-slate-500/40' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
                       }`} />
                     <PasswordStrengthIndicator password={password} isDark={isDark} />
                   </div>
@@ -1051,14 +1124,14 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <p className="text-center text-xs sm:text-sm font-semibold italic tracking-wide text-slate-400">
+          <p className={`text-center text-xs sm:text-sm font-semibold italic tracking-wide ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
             "The Dream Destination of Engineers, NITK Surathkal"
           </p>
         </div>
 
         {/* Bottom Centered Copyright */}
         <div className="w-full mt-auto pt-6 pb-1 text-center">
-          <p className="text-xs sm:text-[13px] font-medium text-slate-400">
+          <p className={`text-xs sm:text-[13px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
             © {new Date().getFullYear()} Sankalp, Abhishek, Ravi | All rights reserved.
           </p>
         </div>

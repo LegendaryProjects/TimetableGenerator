@@ -406,7 +406,7 @@ export default function LoginPage() {
               Done as a part of Software Engineering Course Project
             </p>
             <p className="font-bold text-white text-[13px] sm:text-sm leading-snug drop-shadow">
-              Made by: <br></br>Abhishek Maruti Karennavar (241IT002) <br></br> Sankalp S Kunthe (241IT069) <br></br>Ravi Prakash Rain (241IT056)
+              Made by: <br></br>Abhishek Maruti Karennavar (241IT002) <br></br> Sankalp S Kunthe (241IT069) <br></br>Ravi Prakash Rain (241IT061)
             </p>
             <p className="text-blue-300 font-semibold text-xs sm:text-[13px] drop-shadow">
               Under the guidance of Prof. Jaidhar C D

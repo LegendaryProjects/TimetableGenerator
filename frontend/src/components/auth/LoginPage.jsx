@@ -365,8 +365,10 @@ export default function LoginPage() {
       isDark ? 'bg-[#080b12] text-slate-100' : 'bg-slate-50 text-slate-900'
     }`}>
       
-      {/* LEFT SIDE: NITK Campus Showcase Visual with Seamless Edge Transition */}
-      <div className="relative hidden lg:flex lg:w-1/2 xl:w-7/12 flex-col justify-between p-10 xl:p-12 overflow-hidden bg-slate-950 select-none">
+      {/* LEFT SIDE: NITK Campus Showcase Visual */}
+      <div className={`relative hidden lg:flex lg:w-1/2 xl:w-7/12 flex-col justify-between p-10 xl:p-12 overflow-hidden select-none border-r transition-colors duration-300 ${
+        isDark ? 'bg-slate-950 border-[#182030]' : 'bg-slate-900 border-slate-200 shadow-sm'
+      }`}>
         
         {/* Background Image with Cinematic Backdrop */}
         <div className="absolute inset-0 z-0">
@@ -377,30 +379,27 @@ export default function LoginPage() {
               isDark ? 'brightness-90 contrast-105' : 'brightness-95 contrast-100'
             }`}
           />
-          {/* Top and Bottom Vignette */}
+          {/* Natural Vignette and Atmosphere Overlays */}
           <div className={`absolute inset-0 transition-opacity duration-300 ${
             isDark 
-              ? 'bg-gradient-to-t from-black/95 via-black/35 to-black/40' 
-              : 'bg-gradient-to-t from-slate-950/80 via-slate-900/25 to-slate-900/40'
+              ? 'bg-gradient-to-t from-black/90 via-black/30 to-black/50' 
+              : 'bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-slate-900/40'
           }`} />
           <div className={`absolute inset-0 transition-opacity duration-300 ${
-            isDark ? 'bg-blue-950/20 mix-blend-multiply' : 'bg-sky-950/15 mix-blend-multiply'
-          }`} />
-          
-          {/* Smooth Soft Gradient Transition from Image to Form (Right Edge) */}
-          <div className={`absolute top-0 bottom-0 right-0 w-36 xl:w-48 pointer-events-none transition-colors duration-300 ${
-            isDark 
-              ? 'bg-gradient-to-r from-transparent via-[#080b12]/60 to-[#080b12]' 
-              : 'bg-gradient-to-r from-transparent via-slate-50/70 to-slate-50'
+            isDark ? 'bg-blue-950/20 mix-blend-multiply' : 'bg-blue-950/15 mix-blend-multiply'
           }`} />
         </div>
 
         {/* Top Header on Image */}
-        <div className="relative z-10 flex flex-col gap-3">
+        <div className="relative z-10 flex flex-col gap-3.5">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3.5 bg-black/45 backdrop-blur-md px-6 py-3.5 rounded-2xl border border-white/15 shadow-xl">
-              <div className="p-3 rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-500/30">
-                <GraduationCap className="w-8 h-8 text-white" />
+            <div className={`flex items-center gap-3.5 backdrop-blur-md px-5 py-3 rounded-2xl shadow-xl border ${
+              isDark 
+                ? 'bg-black/50 border-white/15' 
+                : 'bg-slate-950/60 border-white/20'
+            }`}>
+              <div className="p-2.5 rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-500/30">
+                <GraduationCap className="w-7 h-7 text-white" />
               </div>
               <div>
                 <h1 className="text-white font-black text-2xl sm:text-3xl tracking-tight leading-none">NITK AutoTTGen</h1>
@@ -408,30 +407,42 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2.5 bg-black/45 backdrop-blur-md px-6 py-2.5 rounded-full border border-amber-400/35 text-amber-300 text-xs sm:text-sm font-bold shadow-lg">
+            <div className={`flex items-center gap-2 backdrop-blur-md px-5 py-2.5 rounded-full border text-xs sm:text-sm font-bold shadow-lg ${
+              isDark 
+                ? 'bg-black/50 border-amber-400/40 text-amber-300' 
+                : 'bg-slate-950/60 border-amber-300/50 text-amber-300'
+            }`}>
               <Award className="w-4.5 h-4.5 text-amber-400 shrink-0" />
               <span>NIRF Rank 17 (Engineering)</span>
             </div>
           </div>
 
           {/* Subtitle Attribution directly below Title */}
-          <div className="flex flex-col gap-1 px-1">
-            <p className="text-slate-200/95 font-medium text-[13px] sm:text-sm drop-shadow">
+          <div className={`flex flex-col gap-1 p-3.5 rounded-2xl backdrop-blur-md border max-w-lg ${
+            isDark 
+              ? 'bg-black/35 border-white/10' 
+              : 'bg-slate-950/45 border-white/15'
+          }`}>
+            <p className="text-slate-200 font-medium text-[13px] sm:text-sm">
               Done as a part of Software Engineering Course Project
             </p>
-            <p className="font-bold text-white text-[13px] sm:text-sm leading-snug drop-shadow">
-              Made by: <br></br>Abhishek Maruti Karennavar (241IT002) <br></br> Sankalp S Kunthe (241IT069) <br></br>Ravi Prakash Rain (241IT061)
+            <p className="font-bold text-white text-[13px] sm:text-sm leading-snug">
+              Made by: Abhishek Maruti Karennavar (241IT002) • Sankalp S Kunthe (241IT069) • Ravi Prakash Rain (241IT061)
             </p>
-            <p className="text-blue-300 font-semibold text-xs sm:text-[13px] drop-shadow">
+            <p className="text-blue-300 font-semibold text-xs sm:text-[13px]">
               Under the guidance of Prof. Jaidhar C D
             </p>
           </div>
         </div>
 
         {/* Bottom Hero Institutional Text on Image */}
-        <div className="relative z-10 space-y-3 max-w-2xl flex flex-col items-center text-center">
-          <div className="flex flex-col items-center space-y-1.5">
-            <div className="inline-flex items-center justify-center bg-blue-950/20 backdrop-blur-md border border-blue-400/20 text-blue-200 px-7 py-2.5 rounded-full text-lg sm:text-xl xl:text-2xl font-black tracking-wide shadow-lg">
+        <div className="relative z-10 space-y-2.5 max-w-2xl flex flex-col items-center text-center mx-auto">
+          <div className="flex flex-col items-center space-y-1">
+            <div className={`inline-flex items-center justify-center backdrop-blur-md border text-blue-100 px-7 py-2.5 rounded-full text-base sm:text-lg xl:text-xl font-bold tracking-wide shadow-lg ${
+              isDark 
+                ? 'bg-black/50 border-blue-400/30' 
+                : 'bg-slate-950/60 border-blue-400/30'
+            }`}>
               <span>National Institute of Technology Karnataka, Surathkal</span>
             </div>
 
@@ -441,7 +452,7 @@ export default function LoginPage() {
           </div>
 
           {/* Single Line Clean Portal Explanation centered */}
-          <p className="text-xs sm:text-sm text-slate-200/90 font-normal leading-relaxed drop-shadow pt-0.5 max-w-lg text-center">
+          <p className="text-xs sm:text-sm text-slate-200/90 font-medium leading-relaxed drop-shadow max-w-lg text-center">
             Automated academic timetable management portal of NITK Surathkal.
           </p>
         </div>

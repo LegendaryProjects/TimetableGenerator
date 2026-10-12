@@ -367,7 +367,7 @@ export default function LoginPage() {
       
       {/* LEFT SIDE: NITK Campus Showcase Visual */}
       <div className={`relative hidden lg:flex lg:w-1/2 xl:w-7/12 flex-col justify-between p-10 xl:p-12 overflow-hidden select-none transition-colors duration-300 ${
-        isDark ? 'bg-[#080b12]' : 'bg-slate-900 border-r border-slate-200 shadow-sm'
+        isDark ? 'bg-[#080b12]' : 'bg-slate-900'
       }`}>
         
         {/* Background Images with Silky Smooth Crossfade */}
@@ -393,15 +393,20 @@ export default function LoginPage() {
           <div className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
             isDark 
               ? 'bg-gradient-to-t from-black/95 via-black/35 to-black/40 opacity-100' 
-              : 'bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-slate-900/40 opacity-90'
+              : 'bg-gradient-to-t from-slate-950/70 via-slate-900/20 to-slate-900/35 opacity-90'
           }`} />
           <div className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
-            isDark ? 'bg-blue-950/20 mix-blend-multiply' : 'bg-blue-950/15 mix-blend-multiply'
+            isDark ? 'bg-blue-950/20 mix-blend-multiply' : 'bg-blue-950/10 mix-blend-multiply'
           }`} />
 
-          {/* Seamless Soft Gradient Merge from Photo to Background (Active for Dark Mode) */}
-          <div className={`absolute top-0 bottom-0 right-0 w-36 xl:w-52 pointer-events-none transition-opacity duration-500 bg-gradient-to-r from-transparent via-[#080b12]/60 to-[#080b12] ${
+          {/* Dark Mode: Soft gradient blend into dark background */}
+          <div className={`absolute top-0 bottom-0 right-0 w-36 xl:w-56 pointer-events-none transition-opacity duration-700 bg-gradient-to-r from-transparent via-[#080b12]/60 to-[#080b12] ${
             isDark ? 'opacity-100' : 'opacity-0'
+          }`} />
+
+          {/* Light Mode: Soft dark-to-light gradient blend into light background */}
+          <div className={`absolute top-0 bottom-0 right-0 w-32 xl:w-48 pointer-events-none transition-opacity duration-700 bg-gradient-to-r from-transparent via-slate-900/20 to-slate-50 ${
+            !isDark ? 'opacity-100' : 'opacity-0'
           }`} />
         </div>
 

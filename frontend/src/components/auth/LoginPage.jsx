@@ -370,22 +370,32 @@ export default function LoginPage() {
         isDark ? 'bg-slate-950 border-[#182030]' : 'bg-slate-900 border-slate-200 shadow-sm'
       }`}>
         
-        {/* Background Image with Cinematic Backdrop */}
-        <div className="absolute inset-0 z-0">
+        {/* Background Images with Silky Smooth Crossfade */}
+        <div className="absolute inset-0 z-0 overflow-hidden bg-slate-950">
+          {/* Light Theme Campus Image */}
           <img 
-            src={isDark ? campusDarkImage : campusLightImage} 
-            alt="NITK Campus" 
-            className={`w-full h-full object-cover object-center transform filter transition-all duration-500 ${
-              isDark ? 'brightness-90 contrast-105' : 'brightness-95 contrast-100'
+            src={campusLightImage} 
+            alt="NITK Campus Daytime" 
+            className={`absolute inset-0 w-full h-full object-cover object-center transform filter brightness-95 contrast-100 transition-all duration-700 ease-in-out ${
+              !isDark ? 'opacity-100 scale-100' : 'opacity-0 scale-105 pointer-events-none'
             }`}
           />
+          {/* Dark Theme Campus Image */}
+          <img 
+            src={campusDarkImage} 
+            alt="NITK Beach Evening" 
+            className={`absolute inset-0 w-full h-full object-cover object-center transform filter brightness-90 contrast-105 transition-all duration-700 ease-in-out ${
+              isDark ? 'opacity-100 scale-100' : 'opacity-0 scale-105 pointer-events-none'
+            }`}
+          />
+
           {/* Natural Vignette and Atmosphere Overlays */}
-          <div className={`absolute inset-0 transition-opacity duration-300 ${
+          <div className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
             isDark 
-              ? 'bg-gradient-to-t from-black/90 via-black/30 to-black/50' 
-              : 'bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-slate-900/40'
+              ? 'bg-gradient-to-t from-black/90 via-black/30 to-black/50 opacity-100' 
+              : 'bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-slate-900/40 opacity-90'
           }`} />
-          <div className={`absolute inset-0 transition-opacity duration-300 ${
+          <div className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
             isDark ? 'bg-blue-950/20 mix-blend-multiply' : 'bg-blue-950/15 mix-blend-multiply'
           }`} />
         </div>

@@ -307,9 +307,9 @@ export default function AuthModal() {
             </div>
             <div>
               <h2 className={`text-lg font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                NITK AutoTTGen
+                AutoTTGen
               </h2>
-              <p className="text-xs text-blue-500 dark:text-blue-400 font-semibold">National Institute of Technology Karnataka</p>
+              <p className="text-xs text-blue-500 dark:text-blue-400 font-semibold">Dept. of IT, NITK</p>
             </div>
           </div>
 

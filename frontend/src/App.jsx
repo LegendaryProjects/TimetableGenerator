@@ -42,7 +42,7 @@ function MainAppContent() {
       }`}>
         <div className="max-w-[98%] xl:max-w-[1700px] mx-auto px-3 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 items-center gap-2.5 text-sm">
           <div className="flex items-center justify-center md:justify-start gap-2 text-sm">
-            <span className="font-bold text-blue-500 text-sm sm:text-base">NITK AutoTTGen</span>
+            <span className="font-bold text-blue-500 text-sm sm:text-base">AutoTTGen</span>
             <span className="text-slate-400">•</span>
             <span className="text-slate-600 dark:text-zinc-400">Academic Timetable Generator</span>
           </div>
@@ -50,7 +50,7 @@ function MainAppContent() {
             © {new Date().getFullYear()} Sankalp, Abhishek, Ravi | All rights reserved.
           </div>
           <div className="text-sm font-medium text-slate-600 dark:text-zinc-400 text-center md:text-right">
-            NITK Surathkal
+            Dept. of IT, NITK
           </div>
         </div>
       </footer>

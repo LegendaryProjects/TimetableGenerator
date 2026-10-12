@@ -30,11 +30,11 @@ export default function Navbar() {
               <span className={`font-bold text-lg tracking-tight ${
                 isDark ? 'text-white' : 'text-slate-900'
               }`}>
-                NITK AutoTTGen
+                AutoTTGen
               </span>
             </div>
             <p className={`text-xs hidden sm:block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              Academic Timetable Generator
+              Dept. of IT, NITK • Academic Timetable Generator
             </p>
           </div>
         </div>

@@ -413,7 +413,7 @@ export default function LoginPage() {
                 <GraduationCap className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h1 className="text-white font-black text-2xl sm:text-3xl tracking-tight leading-none">NITK AutoTTGen</h1>
+                <h1 className="text-white font-black text-2xl sm:text-3xl tracking-tight leading-none">AutoTTGen</h1>
                 <p className="text-blue-300 text-xs sm:text-sm font-bold tracking-wider uppercase mt-1">Academic Timetable Generator</p>
               </div>
             </div>
@@ -445,7 +445,7 @@ export default function LoginPage() {
         <div className="relative z-10 space-y-3 max-w-2xl flex flex-col items-center text-center mx-auto">
           <div className="flex flex-col items-center space-y-1.5">
             <div className="inline-flex items-center justify-center bg-blue-950/30 backdrop-blur-md border border-blue-400/25 text-blue-200 px-7 py-2.5 rounded-full text-lg sm:text-xl xl:text-2xl font-black tracking-wide shadow-lg">
-              <span>National Institute of Technology Karnataka, Surathkal</span>
+              <span>Department of IT, NITK Surathkal</span>
             </div>
 
             <p className="text-blue-300 text-xs sm:text-sm font-semibold italic tracking-wide text-center drop-shadow">
@@ -455,7 +455,7 @@ export default function LoginPage() {
 
           {/* Single Line Clean Portal Explanation centered */}
           <p className="text-xs sm:text-sm text-slate-200/90 font-normal leading-relaxed drop-shadow pt-0.5 max-w-lg text-center">
-            Automated academic timetable management portal of NITK Surathkal.
+            Automated academic timetable management portal of Department of IT, NITK Surathkal.
           </p>
         </div>
 
@@ -471,8 +471,8 @@ export default function LoginPage() {
               <GraduationCap className="w-6 h-6" />
             </div>
             <div>
-              <h1 className={`text-lg font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>NITK AutoTTGen</h1>
-              <p className={`text-xs font-semibold ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>National Institute of Technology Karnataka</p>
+              <h1 className={`text-lg font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>AutoTTGen</h1>
+              <p className={`text-xs font-semibold ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>Department of IT, NITK Surathkal</p>
             </div>
           </div>
           <button
@@ -1155,7 +1155,7 @@ export default function LoginPage() {
           </div>
 
           <p className={`text-center text-xs sm:text-sm font-semibold italic tracking-wide ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            "The Dream Destination of Engineers, NITK Surathkal"
+            "The Dream Destination of Engineers, Department of IT, NITK Surathkal"
           </p>
         </div>
 

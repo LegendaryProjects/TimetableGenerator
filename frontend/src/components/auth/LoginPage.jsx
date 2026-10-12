@@ -485,7 +485,16 @@ export default function LoginPage() {
             title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             aria-label="Toggle theme"
           >
-            {isDark ? <Sun className="w-4 h-4 text-orange-500" style={{ color: '#f97316' }} /> : <Moon className="w-4 h-4 text-blue-600" />}
+            {isDark ? (
+              <Sun 
+                className="w-4 h-4 text-orange-500" 
+                color="#f97316" 
+                stroke="#f97316" 
+                style={{ color: '#f97316', stroke: '#f97316' }} 
+              />
+            ) : (
+              <Moon className="w-4 h-4 text-blue-600" />
+            )}
           </button>
         </div>
 
@@ -508,7 +517,12 @@ export default function LoginPage() {
               aria-label="Toggle theme"
             >
               {isDark ? (
-                <Sun className="w-4 h-4 text-orange-500" style={{ color: '#f97316' }} />
+                <Sun 
+                  className="w-4 h-4 text-orange-500" 
+                  color="#f97316" 
+                  stroke="#f97316" 
+                  style={{ color: '#f97316', stroke: '#f97316' }} 
+                />
               ) : (
                 <Moon className="w-4 h-4 text-blue-600" />
               )}

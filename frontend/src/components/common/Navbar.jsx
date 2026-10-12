@@ -89,14 +89,19 @@ export default function Navbar() {
             onClick={toggleTheme}
             className={`p-2 rounded-lg border flex items-center justify-center transition-colors ${
               isDark 
-                ? 'bg-[#0f172a] hover:bg-[#1e293b] border-[#1e293b] text-slate-300' 
+                ? 'bg-[#0f172a] hover:bg-[#1e293b] border-[#1e293b] text-orange-500' 
                 : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-600'
             }`}
             title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             aria-label="Toggle theme"
           >
             {isDark ? (
-              <Sun className="w-4 h-4 text-orange-500" style={{ color: '#f97316' }} />
+              <Sun 
+                className="w-4 h-4 text-orange-500" 
+                color="#f97316" 
+                stroke="#f97316" 
+                style={{ color: '#f97316', stroke: '#f97316' }} 
+              />
             ) : (
               <Moon className="w-4 h-4 text-slate-600" />
             )}

@@ -4,6 +4,7 @@ Handles fetching academic entity options from SQL database, generating zero-over
 """
 
 import uuid
+import re
 from flask import Blueprint, request, jsonify
 from backend.database import db
 from backend.models import Department, Subject, Professor, Classroom, Laboratory, Timetable, LogFile, User
@@ -64,19 +65,20 @@ def get_options():
     faculty_users = User.query.filter(
         (User.user_type == 'Faculty') | (User.role.in_(['HoD', 'FACULTY', 'PROFESSOR']))
     ).all()
-    user_email_map = {u.name.lower(): u.email for u in faculty_users}
-    user_id_email_map = {u.user_id: u.email for u in faculty_users}
+    user_email_map = {(u.name.lower(), u.department): u.email for u in faculty_users}
+    user_name_only_email_map = {u.name.lower(): u.email for u in faculty_users}
 
     prof_list = []
     seen_prof_emails = set()
     for p in professors:
         p_dict = p.to_dict()
         # Find matching email from registered users or formulate standard academic email
-        matched_email = user_email_map.get(p.name.lower())
+        matched_email = user_email_map.get((p.name.lower(), p.department_id)) or user_name_only_email_map.get(p.name.lower())
         if not matched_email:
             # Clean name for fallback email format: firstname.dept@nitk.edu.in
-            name_parts = p.name.replace('Dr.', '').replace('Prof.', '').strip().lower().split()
-            clean_name = '.'.join(name_parts[:2]) if len(name_parts) >= 2 else (name_parts[0] if name_parts else 'faculty')
+            name_clean = re.sub(r'[^a-z0-9\s]', '', p.name.lower().replace('dr.', '').replace('prof.', ''))
+            parts = name_clean.split()
+            clean_name = '.'.join(parts[:2]) if len(parts) >= 2 else (parts[0] if parts else 'faculty')
             matched_email = f"{clean_name}.{p.department_id.lower()}@nitk.edu.in"
         p_dict['email'] = matched_email
         prof_list.append(p_dict)

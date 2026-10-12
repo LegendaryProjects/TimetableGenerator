@@ -4,7 +4,8 @@ import { api } from '../../services/api';
 import { ShieldCheck, User, Lock, Mail, ArrowRight, GraduationCap, Briefcase, Building2, Award, KeyRound, CheckCircle2, ArrowLeft, Clock, RefreshCw, Sun, Moon } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { CoatedPerson, BagCarryingPerson } from '../common/RoleIcons';
-import campusImage from '../../assets/nitk-campus.jpg';
+import campusDarkImage from '../../assets/nitk-campus.jpg';
+import campusLightImage from '../../assets/nitk-campuss.jpg';
 import PasswordStrengthIndicator, { checkPasswordStrength } from './PasswordStrengthIndicator';
 
 const SEMESTERS = [
@@ -370,19 +371,27 @@ export default function LoginPage() {
         {/* Background Image with Cinematic Backdrop */}
         <div className="absolute inset-0 z-0">
           <img 
-            src={campusImage} 
-            alt="NITK Beach" 
-            className="w-full h-full object-cover object-center transform filter brightness-90"
+            src={isDark ? campusDarkImage : campusLightImage} 
+            alt="NITK Campus" 
+            className={`w-full h-full object-cover object-center transform filter transition-all duration-500 ${
+              isDark ? 'brightness-90 contrast-105' : 'brightness-95 contrast-100'
+            }`}
           />
           {/* Top and Bottom Vignette */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/35 to-black/40" />
-          <div className="absolute inset-0 bg-blue-950/20 mix-blend-multiply" />
+          <div className={`absolute inset-0 transition-opacity duration-300 ${
+            isDark 
+              ? 'bg-gradient-to-t from-black/95 via-black/35 to-black/40' 
+              : 'bg-gradient-to-t from-slate-950/80 via-slate-900/25 to-slate-900/40'
+          }`} />
+          <div className={`absolute inset-0 transition-opacity duration-300 ${
+            isDark ? 'bg-blue-950/20 mix-blend-multiply' : 'bg-sky-950/15 mix-blend-multiply'
+          }`} />
           
           {/* Smooth Soft Gradient Transition from Image to Form (Right Edge) */}
-          <div className={`absolute top-0 bottom-0 right-0 w-36 xl:w-48 pointer-events-none transition-colors duration-200 ${
+          <div className={`absolute top-0 bottom-0 right-0 w-36 xl:w-48 pointer-events-none transition-colors duration-300 ${
             isDark 
               ? 'bg-gradient-to-r from-transparent via-[#080b12]/60 to-[#080b12]' 
-              : 'bg-gradient-to-r from-transparent via-slate-50/60 to-slate-50'
+              : 'bg-gradient-to-r from-transparent via-slate-50/70 to-slate-50'
           }`} />
         </div>
 
@@ -474,10 +483,10 @@ export default function LoginPage() {
               {activeTab === 'login' ? 'Sign In' : activeTab === 'forgot' ? 'Reset Password' : 'Create Account'}
             </h2>
 
-            {/* Desktop Theme Toggle Button */}
+            {/* Desktop Theme Toggle Button (Icon only) */}
             <button
               onClick={toggleTheme}
-              className={`hidden lg:flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-all ${
+              className={`hidden lg:flex items-center justify-center p-2.5 rounded-xl border transition-all ${
                 isDark 
                   ? 'bg-[#0f1422] hover:bg-[#1a233a] border-[#1e293b] text-slate-300' 
                   : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700 shadow-sm hover:shadow'
@@ -486,15 +495,9 @@ export default function LoginPage() {
               aria-label="Toggle theme"
             >
               {isDark ? (
-                <>
-                  <Sun className="w-4 h-4 text-amber-400" />
-                  <span>Light</span>
-                </>
+                <Sun className="w-4 h-4 text-amber-400" />
               ) : (
-                <>
-                  <Moon className="w-4 h-4 text-blue-600" />
-                  <span>Dark</span>
-                </>
+                <Moon className="w-4 h-4 text-blue-600" />
               )}
             </button>
           </div>
@@ -562,7 +565,7 @@ export default function LoginPage() {
                           ? isDark 
                             ? 'border-blue-500 bg-blue-500/15 text-white ring-1 ring-blue-500/50 shadow-md font-bold' 
                             : 'border-blue-600 bg-blue-50 text-blue-900 ring-2 ring-blue-500 shadow-sm font-bold'
-                          : isDark ? 'border-[#1e293b] text-slate-400 hover:border-[#2f3d58] bg-[#0b0f17]/70' : 'border-slate-200 text-slate-600 hover:bg-slate-100 bg-slate-50/50'
+                          : isDark ? 'border-[#1e293b] text-slate-400 hover:border-[#2f3d58] bg-[#0b0f17]/70' : 'border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-100 bg-slate-50 font-medium'
                       }`}>
                       <CoatedPerson className={`w-4 h-4 ${activePortal === 'HOD' ? (isDark ? 'text-blue-400' : 'text-blue-600') : (isDark ? 'text-slate-400' : 'text-slate-500')}`} />
                       <span>HoD</span>
@@ -574,7 +577,7 @@ export default function LoginPage() {
                           ? isDark 
                             ? 'border-blue-500 bg-blue-500/15 text-white ring-1 ring-blue-500/50 shadow-md font-bold' 
                             : 'border-blue-600 bg-blue-50 text-blue-900 ring-2 ring-blue-500 shadow-sm font-bold'
-                          : isDark ? 'border-[#1e293b] text-slate-400 hover:border-[#2f3d58] bg-[#0b0f17]/70' : 'border-slate-200 text-slate-600 hover:bg-slate-100 bg-slate-50/50'
+                          : isDark ? 'border-[#1e293b] text-slate-400 hover:border-[#2f3d58] bg-[#0b0f17]/70' : 'border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-100 bg-slate-50 font-medium'
                       }`}>
                       <User className={`w-4 h-4 ${activePortal === 'FACULTY' ? (isDark ? 'text-blue-400' : 'text-blue-600') : (isDark ? 'text-slate-400' : 'text-slate-500')}`} />
                       <span>Professor</span>
@@ -586,7 +589,7 @@ export default function LoginPage() {
                           ? isDark 
                             ? 'border-blue-500 bg-blue-500/15 text-white ring-1 ring-blue-500/50 shadow-md font-bold' 
                             : 'border-blue-600 bg-blue-50 text-blue-900 ring-2 ring-blue-500 shadow-sm font-bold'
-                          : isDark ? 'border-[#1e293b] text-slate-400 hover:border-[#2f3d58] bg-[#0b0f17]/70' : 'border-slate-200 text-slate-600 hover:bg-slate-100 bg-slate-50/50'
+                          : isDark ? 'border-[#1e293b] text-slate-400 hover:border-[#2f3d58] bg-[#0b0f17]/70' : 'border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-100 bg-slate-50 font-medium'
                       }`}>
                       <BagCarryingPerson className={`w-4 h-4 ${activePortal === 'STUDENT' ? (isDark ? 'text-blue-400' : 'text-blue-600') : (isDark ? 'text-slate-400' : 'text-slate-500')}`} />
                       <span>Student</span>

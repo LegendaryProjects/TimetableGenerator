@@ -455,7 +455,7 @@ export default function LoginPage() {
 
           {/* Single Line Clean Portal Explanation centered */}
           <p className="text-xs sm:text-sm text-slate-200/90 font-normal leading-relaxed drop-shadow pt-0.5 max-w-lg text-center">
-            Automated academic timetable management portal of Department of IT, NITK Surathkal.
+            Automated academic timetable management portal of Department of IT, NITK.
           </p>
         </div>
 
@@ -1155,7 +1155,7 @@ export default function LoginPage() {
           </div>
 
           <p className={`text-center text-xs sm:text-sm font-semibold italic tracking-wide ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            "The Dream Destination of Engineers, Department of IT, NITK Surathkal"
+            "The Dream Destination of Engineers, NITK Surathkal"
           </p>
         </div>
 

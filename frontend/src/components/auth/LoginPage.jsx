@@ -375,7 +375,7 @@ export default function LoginPage() {
           {/* Light Theme Campus Image */}
           <img 
             src={campusLightImage} 
-            alt="NITK Campus Daytime" 
+            alt="NITK IT Department Building" 
             className={`absolute inset-0 w-full h-full object-cover object-center transform filter brightness-95 contrast-100 transition-all duration-700 ease-in-out ${
               !isDark ? 'opacity-100 scale-100' : 'opacity-0 scale-105 pointer-events-none'
             }`}

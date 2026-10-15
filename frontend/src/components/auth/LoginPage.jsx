@@ -4,8 +4,7 @@ import { api } from '../../services/api';
 import { ShieldCheck, User, Lock, Mail, ArrowRight, GraduationCap, Briefcase, Building2, Award, KeyRound, CheckCircle2, ArrowLeft, Clock, RefreshCw, Sun, Moon } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { CoatedPerson, BagCarryingPerson } from '../common/RoleIcons';
-import campusDarkImage from '../../assets/nitk-campus.jpg';
-import campusLightImage from '../../assets/nitk-campuss.jpg';
+import beachImage from '../../assets/nitk-campus.jpg';
 import PasswordStrengthIndicator, { checkPasswordStrength } from './PasswordStrengthIndicator';
 
 const SEMESTERS = [
@@ -370,23 +369,12 @@ export default function LoginPage() {
         isDark ? 'bg-[#080b12]' : 'bg-slate-900 border-r border-slate-200 shadow-sm'
       }`}>
         
-        {/* Background Images with Silky Smooth Crossfade */}
+        {/* Background Visual: NITK Beach Sunset for Both Themes */}
         <div className="absolute inset-0 z-0 overflow-hidden bg-slate-950">
-          {/* Light Theme Campus Image */}
           <img 
-            src={campusLightImage} 
-            alt="NITK IT Department Building" 
-            className={`absolute inset-0 w-full h-full object-cover object-center transform filter brightness-95 contrast-100 transition-all duration-700 ease-in-out ${
-              !isDark ? 'opacity-100 scale-100' : 'opacity-0 scale-105 pointer-events-none'
-            }`}
-          />
-          {/* Dark Theme Campus Image */}
-          <img 
-            src={campusDarkImage} 
+            src={beachImage} 
             alt="NITK Beach Evening" 
-            className={`absolute inset-0 w-full h-full object-cover object-center transform filter brightness-90 contrast-105 transition-all duration-700 ease-in-out ${
-              isDark ? 'opacity-100 scale-100' : 'opacity-0 scale-105 pointer-events-none'
-            }`}
+            className="absolute inset-0 w-full h-full object-cover object-center transform filter brightness-90 contrast-105"
           />
 
           {/* Natural Vignette and Atmosphere Overlays */}

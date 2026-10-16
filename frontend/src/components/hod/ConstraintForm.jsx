@@ -308,16 +308,108 @@ export default function ConstraintForm({ onClose }) {
     return { theoryHours: defaultTheory, labHours: 0, requiresLab: false };
   };
 
+  // Get faculty options for any course: SM -> HSSM, CV -> Civil, PH -> Physics, CY -> Chemistry, MA -> MACS
+  const getFacultyOptionsForSubject = (subj) => {
+    const code = (subj?.code || '').trim().toUpperCase();
+    const name = (subj?.name || '').toLowerCase();
+
+    // 1. SM courses -> HSSM Department faculty
+    if (code.startsWith('SM') || /humanities|management|economics|sociology|ethics/i.test(name)) {
+      const hssmProfs = (allProfessors || []).filter(p => p.department === 'HSSM');
+      if (hssmProfs.length > 0) {
+        return { primaryDept: 'HSSM (Humanities & Management)', profs: hssmProfs, isCrossDept: true, deptCode: 'HSSM' };
+      }
+      const foundHssm = (foundationProfessors || []).filter(p => p.department === 'HSSM');
+      if (foundHssm.length > 0) {
+        return { primaryDept: 'HSSM (Humanities & Management)', profs: foundHssm, isCrossDept: true, deptCode: 'HSSM' };
+      }
+    }
+
+    // 2. CV courses -> Civil Engineering (CV) Department faculty
+    if (code.startsWith('CV') || /civil|surveying|structural|environmental studies/i.test(name)) {
+      const cvProfs = (allProfessors || []).filter(p => p.department === 'CV');
+      if (cvProfs.length > 0) {
+        return { primaryDept: 'Civil Engineering (CV)', profs: cvProfs, isCrossDept: true, deptCode: 'CV' };
+      }
+      const foundCv = (foundationProfessors || []).filter(p => p.department === 'CV');
+      if (foundCv.length > 0) {
+        return { primaryDept: 'Civil Engineering (CV)', profs: foundCv, isCrossDept: true, deptCode: 'CV' };
+      }
+    }
+
+    // 3. Physics (PH) courses -> PH Department faculty
+    if (code.startsWith('PH') || /physics/i.test(name)) {
+      const phProfs = (allProfessors || foundationProfessors || []).filter(p => p.department === 'PH');
+      if (phProfs.length > 0) {
+        return { primaryDept: 'Physics (PH)', profs: phProfs, isCrossDept: true, deptCode: 'PH' };
+      }
+    }
+
+    // 4. Chemistry (CY) courses -> CY Department faculty
+    if (code.startsWith('CY') || /chemistry/i.test(name)) {
+      const cyProfs = (allProfessors || foundationProfessors || []).filter(p => p.department === 'CY');
+      if (cyProfs.length > 0) {
+        return { primaryDept: 'Chemistry (CY)', profs: cyProfs, isCrossDept: true, deptCode: 'CY' };
+      }
+    }
+
+    // 5. Mathematics (MA) courses -> MACS Department faculty
+    if (code.startsWith('MA') || /mathematics|calculus|algebra|numerical/i.test(name)) {
+      const macsProfs = (allProfessors || foundationProfessors || []).filter(p => p.department === 'MACS');
+      if (macsProfs.length > 0) {
+        return { primaryDept: 'Mathematics (MACS)', profs: macsProfs, isCrossDept: true, deptCode: 'MACS' };
+      }
+    }
+
+    return { primaryDept: `${department} Department`, profs: professors, isCrossDept: false, deptCode: department };
+  };
+
   const resolveFacultyId = (defaultFac, subj) => {
-    if (!defaultFac) return professors[0]?.id || '';
-    if (professors.some(p => p.id === defaultFac)) return defaultFac;
+    const code = (subj?.code || '').trim().toUpperCase();
+
+    // Check if defaultFac is already set and valid
+    if (defaultFac) {
+      if (professors.some(p => p.id === defaultFac)) return defaultFac;
+      if (foundationProfessors?.some(p => p.id === defaultFac)) return defaultFac;
+      if (allProfessors?.some(p => p.id === defaultFac)) return defaultFac;
+    }
+
+    // SM courses -> prioritize HSSM faculty
+    if (code.startsWith('SM')) {
+      const hssmProf = (allProfessors || []).find(p => p.department === 'HSSM') || (foundationProfessors || []).find(p => p.department === 'HSSM');
+      if (hssmProf) return hssmProf.id;
+    }
+
+    // CV courses -> prioritize Civil faculty
+    if (code.startsWith('CV')) {
+      const cvProf = (allProfessors || []).find(p => p.department === 'CV') || (foundationProfessors || []).find(p => p.department === 'CV');
+      if (cvProf) return cvProf.id;
+    }
+
+    // PH courses -> Physics
+    if (code.startsWith('PH')) {
+      const phProf = (foundationProfessors || allProfessors || []).find(p => p.department === 'PH');
+      if (phProf) return phProf.id;
+    }
+
+    // CY courses -> Chemistry
+    if (code.startsWith('CY')) {
+      const cyProf = (foundationProfessors || allProfessors || []).find(p => p.department === 'CY');
+      if (cyProf) return cyProf.id;
+    }
+
+    // MA courses -> MACS
+    if (code.startsWith('MA')) {
+      const macsProf = (foundationProfessors || allProfessors || []).find(p => p.department === 'MACS');
+      if (macsProf) return macsProf.id;
+    }
 
     // Cross-department prefix matching (e.g. it_p01 <-> ai_it_p01)
-    if (defaultFac.startsWith('it_p')) {
+    if (defaultFac && defaultFac.startsWith('it_p')) {
       const aiId = `ai_${defaultFac}`;
       if (professors.some(p => p.id === aiId)) return aiId;
     }
-    if (defaultFac.startsWith('ai_it_p')) {
+    if (defaultFac && defaultFac.startsWith('ai_it_p')) {
       const itId = defaultFac.replace('ai_', '');
       if (professors.some(p => p.id === itId)) return itId;
     }
@@ -328,9 +420,6 @@ export default function ConstraintForm({ onClose }) {
       const nameMatch = professors.find(p => p.name?.trim().toLowerCase() === allMatch.name?.trim().toLowerCase());
       if (nameMatch) return nameMatch.id;
     }
-
-    // Foundation matching
-    if (foundationProfessors?.some(p => p.id === defaultFac)) return defaultFac;
 
     return professors[0]?.id || '';
   };
@@ -359,18 +448,20 @@ export default function ConstraintForm({ onClose }) {
     const initialConfigs = {};
     currentSemSubjs.forEach(s => {
       let defaultFac = s.defaultFaculty;
-      if (!defaultFac && isScienceMathOrFoundation(s) && foundationProfessors && foundationProfessors.length > 0) {
+      if (!defaultFac) {
         const code = (s.code || '').toUpperCase();
-        if (code.startsWith('PH')) {
-          defaultFac = foundationProfessors.find(p => p.department === 'PH')?.id;
+        if (code.startsWith('SM')) {
+          defaultFac = (allProfessors?.find(p => p.department === 'HSSM') || foundationProfessors?.find(p => p.department === 'HSSM'))?.id;
+        } else if (code.startsWith('CV')) {
+          defaultFac = (allProfessors?.find(p => p.department === 'CV') || foundationProfessors?.find(p => p.department === 'CV'))?.id;
+        } else if (code.startsWith('PH')) {
+          defaultFac = (allProfessors?.find(p => p.department === 'PH') || foundationProfessors?.find(p => p.department === 'PH'))?.id;
         } else if (code.startsWith('CY')) {
-          defaultFac = foundationProfessors.find(p => p.department === 'CY')?.id;
+          defaultFac = (allProfessors?.find(p => p.department === 'CY') || foundationProfessors?.find(p => p.department === 'CY'))?.id;
         } else if (code.startsWith('MA')) {
-          defaultFac = foundationProfessors.find(p => p.department === 'MACS')?.id;
+          defaultFac = (allProfessors?.find(p => p.department === 'MACS') || foundationProfessors?.find(p => p.department === 'MACS'))?.id;
         } else if (code.startsWith('CS')) {
-          defaultFac = foundationProfessors.find(p => ['CSE', 'IT'].includes(p.department))?.id;
-        } else if (code.startsWith('SM')) {
-          defaultFac = foundationProfessors.find(p => p.department === 'HSSM')?.id;
+          defaultFac = foundationProfessors?.find(p => ['CSE', 'IT'].includes(p.department))?.id;
         }
       }
 
@@ -1193,56 +1284,32 @@ export default function ConstraintForm({ onClose }) {
                             isDark ? 'bg-[#090d16] border-[#1e293b] text-slate-200' : 'bg-white border-slate-200 text-slate-800'
                           }`}
                         >
-                          {isScienceMathOrFoundation(s) ? (
-                            <>
-                              {foundationProfessors?.filter(p => ['PH', 'CY'].includes(p.department)).length > 0 && (
-                                <optgroup label="Science (Physics & Chemistry)">
-                                  {foundationProfessors.filter(p => ['PH', 'CY'].includes(p.department)).map(p => (
+                          {(() => {
+                            const { primaryDept, profs: matchedProfs, isCrossDept } = getFacultyOptionsForSubject(s);
+                            return (
+                              <>
+                                <optgroup label={primaryDept}>
+                                  {matchedProfs.map(p => (
                                     <option key={p.id} value={p.id}>{p.name} ({p.department})</option>
                                   ))}
                                 </optgroup>
-                              )}
-                              {foundationProfessors?.filter(p => p.department === 'MACS').length > 0 && (
-                                <optgroup label="Mathematics (MACS)">
-                                  {foundationProfessors.filter(p => p.department === 'MACS').map(p => (
-                                    <option key={p.id} value={p.id}>{p.name} (MACS)</option>
-                                  ))}
-                                </optgroup>
-                              )}
-                              {foundationProfessors?.filter(p => ['CSE', 'IT'].includes(p.department)).length > 0 && (
-                                <optgroup label="Computer Science (CS & IT)">
-                                  {foundationProfessors.filter(p => ['CSE', 'IT'].includes(p.department)).map(p => (
-                                    <option key={p.id} value={p.id}>{p.name} ({p.department})</option>
-                                  ))}
-                                </optgroup>
-                              )}
-                              {foundationProfessors?.filter(p => p.department === 'HSSM').length > 0 && (
-                                <optgroup label="HSSM (Humanities & Management)">
-                                  {foundationProfessors.filter(p => p.department === 'HSSM').map(p => (
-                                    <option key={p.id} value={p.id}>{p.name} (HSSM)</option>
-                                  ))}
-                                </optgroup>
-                              )}
-                              {professors.some(p => !['PH', 'CY', 'MACS', 'CSE', 'IT', 'HSSM'].includes(p.department)) && (
-                                <optgroup label={`${department} Department Faculty`}>
-                                  {professors.map(p => (
-                                    <option key={p.id} value={p.id}>{p.name} ({p.department || department})</option>
-                                  ))}
-                                </optgroup>
-                              )}
-                            </>
-                          ) : (
-                            <>
-                              {professors.map(p => (
-                                <option key={p.id} value={p.id}>{p.name}</option>
-                              ))}
-                              {cfg.facultyId && !professors.some(p => p.id === cfg.facultyId) && (
-                                <option value={cfg.facultyId}>
-                                  {allProfessors?.find(p => p.id === cfg.facultyId)?.name || 'Assigned Faculty'}
-                                </option>
-                              )}
-                            </>
-                          )}
+
+                                {isCrossDept && (
+                                  <optgroup label={`${department} Department Faculty`}>
+                                    {professors.map(p => (
+                                      <option key={p.id} value={p.id}>{p.name} ({p.department || department})</option>
+                                    ))}
+                                  </optgroup>
+                                )}
+
+                                {cfg.facultyId && !matchedProfs.some(p => p.id === cfg.facultyId) && !professors.some(p => p.id === cfg.facultyId) && (
+                                  <option value={cfg.facultyId}>
+                                    {allProfessors?.find(p => p.id === cfg.facultyId)?.name || 'Assigned Faculty'}
+                                  </option>
+                                )}
+                              </>
+                            );
+                          })()}
                         </select>
                       </label>
                     </div>
@@ -1411,7 +1478,9 @@ export default function ConstraintForm({ onClose }) {
 
               {/* Faculty In-Charge Assignment */}
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-400">Faculty In-Charge</label>
+                <label className="text-xs font-semibold text-slate-400">
+                  Faculty In-Charge {newSubjCode.startsWith('SM') ? '(HSSM Faculty)' : newSubjCode.startsWith('CV') ? '(Civil Faculty)' : ''}
+                </label>
                 <select
                   value={newSubjFacultyId}
                   onChange={e => setNewSubjFacultyId(e.target.value)}
@@ -1420,9 +1489,25 @@ export default function ConstraintForm({ onClose }) {
                   }`}
                 >
                   <option value="">Auto-Assign / Default Faculty</option>
-                  {professors.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} ({p.designation})</option>
-                  ))}
+                  {(() => {
+                    const { primaryDept, profs: matchedProfs, isCrossDept } = getFacultyOptionsForSubject({ code: newSubjCode, name: newSubjName });
+                    return (
+                      <>
+                        <optgroup label={primaryDept}>
+                          {matchedProfs.map(p => (
+                            <option key={p.id} value={p.id}>{p.name} ({p.department})</option>
+                          ))}
+                        </optgroup>
+                        {isCrossDept && (
+                          <optgroup label={`${department} Department Faculty`}>
+                            {professors.map(p => (
+                              <option key={p.id} value={p.id}>{p.name} ({p.department || department})</option>
+                            ))}
+                          </optgroup>
+                        )}
+                      </>
+                    );
+                  })()}
                 </select>
               </div>
 

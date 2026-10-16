@@ -393,7 +393,19 @@ class TimetableConstraintEngine:
                     (Professor.id.ilike(f"%{prof_id}%"))
                 ).first()
             if not prof:
-                prof = subj.default_faculty or fallback_prof
+                s_code = (getattr(subj, 'code', '') or '').upper()
+                if s_code.startswith('SM'):
+                    prof = Professor.query.filter_by(department_id='HSSM').first()
+                elif s_code.startswith('CV'):
+                    prof = Professor.query.filter_by(department_id='CV').first()
+                elif s_code.startswith('PH'):
+                    prof = Professor.query.filter_by(department_id='PH').first()
+                elif s_code.startswith('CY'):
+                    prof = Professor.query.filter_by(department_id='CY').first()
+                elif s_code.startswith('MA'):
+                    prof = Professor.query.filter_by(department_id='MACS').first()
+                else:
+                    prof = subj.default_faculty or fallback_prof
             p_id = prof.id if prof else f'prof_{self.department}_1'
             p_name = prof.name if prof else 'Faculty Member'
 

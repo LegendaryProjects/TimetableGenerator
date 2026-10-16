@@ -56,8 +56,8 @@ def get_options():
         subject_query = subject_query.filter_by(semester=sem_num)
     subjects = subject_query.all()
 
-    # Foundation professors for 1st & 2nd sem courses (Science: Physics/Chemistry, MACS: Maths, HSSM, CS: CSE/IT)
-    foundation_depts = ['PH', 'CY', 'HSSM', 'MACS', 'CSE', 'IT']
+    # Foundation professors for cross-department courses (Science: PH/CY, MACS: Maths, HSSM, CS, CV: Civil)
+    foundation_depts = ['PH', 'CY', 'HSSM', 'MACS', 'CSE', 'IT', 'CV']
     foundation_profs = Professor.query.filter(Professor.department_id.in_(foundation_depts)).all()
     all_profs = Professor.query.all()
 

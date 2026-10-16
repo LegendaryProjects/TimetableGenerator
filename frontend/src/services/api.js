@@ -128,6 +128,13 @@ export const api = {
     });
   },
 
+  async createSubject(subjectData) {
+    return request('/schedule/subjects', {
+      method: 'POST',
+      body: JSON.stringify(subjectData)
+    });
+  },
+
   // --- Review & Approval Workflow ---
   async swapSlots({ sourceTimetableId, targetTimetableId, source, target }) {
     return request('/review/swap', {

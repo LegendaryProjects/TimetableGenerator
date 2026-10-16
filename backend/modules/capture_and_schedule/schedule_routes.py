@@ -286,3 +286,79 @@ def generate_drafts(current_user):
         'message': f'Successfully generated and saved {len(drafts)} draft timetables.',
         'drafts': [t.to_dict() for t in saved_timetables]
     }), 200
+
+
+@schedule_bp.route('/subjects', methods=['POST'])
+def add_subject():
+    """
+    Creates or updates a course/subject in the academic curriculum (D2 store).
+    """
+    data = request.get_json() or {}
+    code = (data.get('code') or '').strip().upper()
+    name = (data.get('name') or '').strip()
+    if not code:
+        return jsonify({'error': 'Course code is required'}), 400
+    if not name:
+        name = f"Course {code}"
+
+    department_id = data.get('department') or data.get('department_id') or 'IT'
+    semester = int(data.get('semester') or 5)
+    year = int(data.get('year') or max(1, (semester + 1) // 2))
+    credits = int(data.get('credits') or 3)
+    l_hours = int(data.get('l_hours') if data.get('l_hours') is not None else (data.get('l') or 3))
+    t_hours = int(data.get('t_hours') if data.get('t_hours') is not None else (data.get('t') or 0))
+    p_hours = int(data.get('p_hours') if data.get('p_hours') is not None else (data.get('p') or 0))
+
+    ltp = f"({l_hours}-{t_hours}-{p_hours})"
+    subj_type = 'lab' if (p_hours > 0 and l_hours == 0) else 'theory'
+    requires_lab = p_hours > 0
+    default_faculty_id = data.get('defaultFacultyId') or data.get('default_faculty_id') or None
+    classes_per_week = l_hours + t_hours
+
+    # Standard clean ID
+    base_id = re.sub(r'[^a-zA-Z0-9]', '', code).lower()
+    subject_id = f"{department_id.lower()}_{base_id}" if not base_id.startswith(department_id.lower()) else base_id
+
+    existing = Subject.query.filter(
+        (Subject.id == subject_id) | 
+        ((Subject.code == code) & (Subject.department_id == department_id))
+    ).first()
+
+    if existing:
+        existing.name = name
+        existing.credits = credits
+        existing.ltp = ltp
+        existing.year = year
+        existing.semester = semester
+        existing.type = subj_type
+        existing.requires_lab = requires_lab
+        existing.classes_per_week = classes_per_week
+        if default_faculty_id:
+            existing.default_faculty_id = default_faculty_id
+        db.session.commit()
+        return jsonify({
+            'message': f'Course {code} updated successfully',
+            'subject': existing.to_dict()
+        }), 200
+
+    new_subj = Subject(
+        id=subject_id,
+        code=code,
+        name=name,
+        department_id=department_id,
+        year=year,
+        semester=semester,
+        credits=credits,
+        ltp=ltp,
+        type=subj_type,
+        requires_lab=requires_lab,
+        default_faculty_id=default_faculty_id,
+        classes_per_week=classes_per_week
+    )
+    db.session.add(new_subj)
+    db.session.commit()
+
+    return jsonify({
+        'message': f'Course {code} added successfully',
+        'subject': new_subj.to_dict()
+    }), 201

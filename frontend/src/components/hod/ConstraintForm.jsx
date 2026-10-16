@@ -3,7 +3,7 @@ import { useTimetable } from '../../context/TimetableContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import {
-  Building, BookOpen, Sparkles, RotateCcw, Zap, Check, AlertOctagon, X, Monitor
+  Building, BookOpen, Sparkles, RotateCcw, Zap, Check, AlertOctagon, X, Monitor, Plus
 } from 'lucide-react';
 
 const ODD_SEMESTERS = [
@@ -31,6 +31,7 @@ export default function ConstraintForm({ onClose }) {
     classrooms,
     laboratories,
     subjects,
+    addSubject,
     professors,
     foundationProfessors,
     allProfessors,
@@ -92,6 +93,17 @@ export default function ConstraintForm({ onClose }) {
   const [configs, setConfigs] = useState({});
   const [isGenerating, setIsGenerating] = useState(false);
   const [sectionClassrooms, setSectionClassrooms] = useState({});
+
+  // Add Subject Modal State
+  const [isAddSubjectOpen, setIsAddSubjectOpen] = useState(false);
+  const [newSubjCode, setNewSubjCode] = useState('');
+  const [newSubjName, setNewSubjName] = useState('');
+  const [newSubjCredits, setNewSubjCredits] = useState(3);
+  const [newSubjL, setNewSubjL] = useState(3);
+  const [newSubjT, setNewSubjT] = useState(0);
+  const [newSubjP, setNewSubjP] = useState(0);
+  const [newSubjFacultyId, setNewSubjFacultyId] = useState('');
+  const [isSubmittingSubject, setIsSubmittingSubject] = useState(false);
 
   // Sync classrooms: select all department classrooms by default
   useEffect(() => {
@@ -414,6 +426,76 @@ export default function ConstraintForm({ onClose }) {
       set(prev => prev.filter(x => x !== id));
     } else {
       set(prev => [...prev, id]);
+    }
+  };
+
+  const handleAddSubjectSubmit = async (e) => {
+    if (e) e.preventDefault();
+    const cleanCode = (newSubjCode || '').trim().toUpperCase();
+    if (!cleanCode) {
+      notify('Please enter a valid Course Code.', 'warning');
+      return;
+    }
+
+    setIsSubmittingSubject(true);
+    try {
+      const cleanName = (newSubjName || '').trim() || `Course ${cleanCode}`;
+      const payload = {
+        code: cleanCode,
+        name: cleanName,
+        department: department,
+        semester: Number(selectedSemester),
+        year: Math.ceil(Number(selectedSemester) / 2),
+        credits: Number(newSubjCredits),
+        l_hours: Number(newSubjL),
+        t_hours: Number(newSubjT),
+        p_hours: Number(newSubjP),
+        defaultFacultyId: newSubjFacultyId || (professors[0]?.id || null)
+      };
+
+      const added = await addSubject(payload);
+
+      // Auto-select this subject in current semester
+      setSelectedSubjsBySem(prev => {
+        const current = prev[selectedSemester] || [];
+        if (!current.includes(added.id)) {
+          return {
+            ...prev,
+            [selectedSemester]: [...current, added.id]
+          };
+        }
+        return prev;
+      });
+
+      // Configure default theory & lab hours for this subject
+      const theoryHours = Number(newSubjL) + Number(newSubjT);
+      const labHours = Number(newSubjP);
+      setConfigs(prev => ({
+        ...prev,
+        [added.id]: {
+          theoryHours: theoryHours,
+          labHours: labHours,
+          requiresLab: labHours > 0,
+          facultyId: newSubjFacultyId || resolveFacultyId(added.defaultFaculty, added),
+          labRoomId: 'auto'
+        }
+      }));
+
+      notify(`Course ${cleanCode} (${cleanName}) added to Semester ${selectedSemester} and selected!`, 'success');
+
+      // Reset form
+      setNewSubjCode('');
+      setNewSubjName('');
+      setNewSubjCredits(3);
+      setNewSubjL(3);
+      setNewSubjT(0);
+      setNewSubjP(0);
+      setNewSubjFacultyId('');
+      setIsAddSubjectOpen(false);
+    } catch (err) {
+      notify(`Failed to add course: ${err.message}`, 'error');
+    } finally {
+      setIsSubmittingSubject(false);
     }
   };
 
@@ -965,6 +1047,15 @@ export default function ConstraintForm({ onClose }) {
             <BookOpen className="w-3.5 h-3.5 text-blue-500" />
             <span>Courses for Semester {selectedSemester}</span>
           </span>
+
+          <button
+            type="button"
+            onClick={() => setIsAddSubjectOpen(true)}
+            className="px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white shadow-sm transition-all shrink-0 cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add Subject</span>
+          </button>
         </div>
 
         <div className="space-y-1.5 max-h-80 overflow-y-auto pr-1">
@@ -1191,6 +1282,192 @@ export default function ConstraintForm({ onClose }) {
           </button>
         </div>
       </div>
+
+      {/* Add Subject Modal */}
+      {isAddSubjectOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className={`w-full max-w-lg rounded-2xl border shadow-2xl p-5 sm:p-6 space-y-4 transition-all ${
+            isDark ? 'bg-[#0f172a] border-[#1e293b] text-slate-100' : 'bg-white border-slate-200 text-slate-800'
+          }`}>
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-500 shrink-0">
+                  <BookOpen className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold">Add Subject</h3>
+                  <p className="text-[11px] text-slate-400">Add course to Semester {selectedSemester} curriculum ({department} Dept)</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddSubjectOpen(false)}
+                className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleAddSubjectSubmit} className="space-y-4">
+              {/* Course Code & Course Name */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-400">
+                    Course Code <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newSubjCode}
+                    onChange={e => setNewSubjCode(e.target.value.toUpperCase())}
+                    placeholder="e.g. IT350"
+                    className={`w-full px-3 py-2 rounded-lg text-xs font-mono font-semibold border focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                      isDark ? 'bg-[#090d16] border-[#1e293b] text-slate-100 placeholder:text-slate-600' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400'
+                    }`}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-400">Course Name</label>
+                  <input
+                    type="text"
+                    value={newSubjName}
+                    onChange={e => setNewSubjName(e.target.value)}
+                    placeholder="e.g. Distributed Computing"
+                    className={`w-full px-3 py-2 rounded-lg text-xs font-semibold border focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                      isDark ? 'bg-[#090d16] border-[#1e293b] text-slate-100 placeholder:text-slate-600' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400'
+                    }`}
+                  />
+                </div>
+              </div>
+
+              {/* Credits, L, T, P dropdowns */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                {/* Credits - dropdown max till 6 */}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-400">Credits</label>
+                  <select
+                    value={newSubjCredits}
+                    onChange={e => setNewSubjCredits(Number(e.target.value))}
+                    className={`w-full px-2.5 py-2 rounded-lg text-xs font-semibold border focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer ${
+                      isDark ? 'bg-[#090d16] border-[#1e293b] text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-900'
+                    }`}
+                  >
+                    {[1, 2, 3, 4, 5, 6].map(c => (
+                      <option key={c} value={c}>{c} Credits</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* L Hours - dropdown max till 4 */}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-400">L Hours</label>
+                  <select
+                    value={newSubjL}
+                    onChange={e => setNewSubjL(Number(e.target.value))}
+                    className={`w-full px-2.5 py-2 rounded-lg text-xs font-semibold border focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer ${
+                      isDark ? 'bg-[#090d16] border-[#1e293b] text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-900'
+                    }`}
+                  >
+                    {[0, 1, 2, 3, 4].map(l => (
+                      <option key={l} value={l}>{l} Lecture Hrs</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* T Hours - dropdown max till 3 */}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-400">T Hours</label>
+                  <select
+                    value={newSubjT}
+                    onChange={e => setNewSubjT(Number(e.target.value))}
+                    className={`w-full px-2.5 py-2 rounded-lg text-xs font-semibold border focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer ${
+                      isDark ? 'bg-[#090d16] border-[#1e293b] text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-900'
+                    }`}
+                  >
+                    {[0, 1, 2, 3].map(t => (
+                      <option key={t} value={t}>{t} Tutorial Hrs</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* P Hours - dropdown max till 4 */}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-400">P Hours</label>
+                  <select
+                    value={newSubjP}
+                    onChange={e => setNewSubjP(Number(e.target.value))}
+                    className={`w-full px-2.5 py-2 rounded-lg text-xs font-semibold border focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer ${
+                      isDark ? 'bg-[#090d16] border-[#1e293b] text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-900'
+                    }`}
+                  >
+                    {[0, 1, 2, 3, 4].map(p => (
+                      <option key={p} value={p}>{p} Lab Hrs</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Faculty In-Charge Assignment */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-400">Faculty In-Charge</label>
+                <select
+                  value={newSubjFacultyId}
+                  onChange={e => setNewSubjFacultyId(e.target.value)}
+                  className={`w-full px-3 py-2 rounded-lg text-xs font-semibold border focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer ${
+                    isDark ? 'bg-[#090d16] border-[#1e293b] text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-900'
+                  }`}
+                >
+                  <option value="">Auto-Assign / Default Faculty</option>
+                  {professors.map(p => (
+                    <option key={p.id} value={p.id}>{p.name} ({p.designation})</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* LTP preview badge */}
+              <div className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
+                isDark ? 'bg-slate-900/60 border-slate-800 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-700'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">LTP Scheme:</span>
+                  <span className="font-mono font-bold text-blue-500">({newSubjL}-{newSubjT}-{newSubjP})</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] px-2 py-0.5 rounded font-bold bg-blue-950/60 text-blue-300 border border-blue-800/40">
+                    {newSubjCredits} Credits
+                  </span>
+                  <span className="text-[11px] text-slate-400">
+                    {newSubjL + newSubjT} Theory + {newSubjP} Lab hrs/wk
+                  </span>
+                </div>
+              </div>
+
+              {/* Form Buttons */}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsAddSubjectOpen(false)}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                    isDark ? 'bg-[#162032] hover:bg-[#1e2d47] border-[#1e293b] text-slate-300' : 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700'
+                  }`}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingSubject}
+                  className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  {isSubmittingSubject ? <RotateCcw className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                  <span>Add Subject</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -702,6 +702,44 @@ export function TimetableProvider({ children }) {
     notify(`All timetables for ${selectedDepartment} have been APPROVED & PUBLISHED!`, 'success');
   };
 
+  const addSubject = async (subjectData) => {
+    try {
+      const res = await api.createSubject(subjectData);
+      const newSubj = res?.subject || subjectData;
+      setSubjects(prev => {
+        const filtered = prev.filter(s => s.id !== newSubj.id && !(s.code === newSubj.code && s.department === newSubj.department));
+        return [...filtered, newSubj];
+      });
+      return newSubj;
+    } catch (err) {
+      console.warn('Backend subject creation failed, using local fallback:', err);
+      const dept = subjectData.department || selectedDepartment || 'IT';
+      const localId = `${dept.toLowerCase()}_${(subjectData.code || '').toLowerCase()}`;
+      const l = Number(subjectData.l_hours !== undefined ? subjectData.l_hours : 3);
+      const t = Number(subjectData.t_hours !== undefined ? subjectData.t_hours : 0);
+      const p = Number(subjectData.p_hours !== undefined ? subjectData.p_hours : 0);
+      const localSubj = {
+        id: localId,
+        code: subjectData.code,
+        name: subjectData.name || `Course ${subjectData.code}`,
+        department: dept,
+        semester: Number(subjectData.semester || selectedSemester || 5),
+        year: Number(subjectData.year || Math.ceil(Number(subjectData.semester || 5) / 2)),
+        credits: Number(subjectData.credits || 3),
+        ltp: `(${l}-${t}-${p})`,
+        type: (p > 0 && l === 0) ? 'lab' : 'theory',
+        requires_lab: p > 0,
+        defaultFaculty: subjectData.defaultFacultyId || null,
+        classesPerWeek: l + t
+      };
+      setSubjects(prev => {
+        const filtered = prev.filter(s => s.id !== localSubj.id && !(s.code === localSubj.code && s.department === localSubj.department));
+        return [...filtered, localSubj];
+      });
+      return localSubj;
+    }
+  };
+
   return (
     <TimetableContext.Provider value={{
       timetables,
@@ -712,6 +750,7 @@ export function TimetableProvider({ children }) {
       classrooms,
       laboratories,
       subjects,
+      addSubject,
       years,
       semesters,
       sections,

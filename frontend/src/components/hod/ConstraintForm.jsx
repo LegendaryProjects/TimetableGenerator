@@ -1162,15 +1162,6 @@ export default function ConstraintForm({ onClose }) {
             <BookOpen className="w-3.5 h-3.5 text-blue-500" />
             <span>Courses for Semester {selectedSemester}</span>
           </span>
-
-          <button
-            type="button"
-            onClick={() => setIsAddSubjectOpen(true)}
-            className="px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white shadow-sm transition-all shrink-0 cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Add Subject</span>
-          </button>
         </div>
 
         <div className="space-y-1.5 max-h-80 overflow-y-auto pr-1">

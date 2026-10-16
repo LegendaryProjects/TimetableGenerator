@@ -105,6 +105,21 @@ export default function ConstraintForm({ onClose }) {
   const [newSubjFacultyId, setNewSubjFacultyId] = useState('');
   const [isSubmittingSubject, setIsSubmittingSubject] = useState(false);
 
+  // NITK Credit Formula: Credits = L + T + max(0, P - 1)
+  const expectedCredits = Number(newSubjL) + Number(newSubjT) + Math.max(0, Number(newSubjP) - 1);
+
+  const handleHoursChange = (type, val) => {
+    const l = type === 'l' ? val : Number(newSubjL);
+    const t = type === 't' ? val : Number(newSubjT);
+    const p = type === 'p' ? val : Number(newSubjP);
+    if (type === 'l') setNewSubjL(val);
+    if (type === 't') setNewSubjT(val);
+    if (type === 'p') setNewSubjP(val);
+
+    const calc = l + t + Math.max(0, p - 1);
+    setNewSubjCredits(Math.min(6, Math.max(1, calc)));
+  };
+
   // Sync classrooms: select all department classrooms by default
   useEffect(() => {
     if (classrooms && classrooms.length > 0) {
@@ -525,6 +540,15 @@ export default function ConstraintForm({ onClose }) {
     const cleanCode = (newSubjCode || '').trim().toUpperCase();
     if (!cleanCode) {
       notify('Please enter a valid Course Code.', 'warning');
+      return;
+    }
+
+    const l = Number(newSubjL);
+    const t = Number(newSubjT);
+    const p = Number(newSubjP);
+    const calculatedCredits = l + t + Math.max(0, p - 1);
+    if (Number(newSubjCredits) !== calculatedCredits) {
+      notify(`Credit mismatch: Sum of L (${l}) + T (${t}) + max(0, P - 1) (${Math.max(0, p - 1)}) must equal Credits (${newSubjCredits})! Expected: ${calculatedCredits} Credits.`, 'error');
       return;
     }
 
@@ -1364,7 +1388,6 @@ export default function ConstraintForm({ onClose }) {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold">Add Subject</h3>
-                  <p className="text-[11px] text-slate-400">Add course to Semester {selectedSemester} curriculum ({department} Dept)</p>
                 </div>
               </div>
               <button
@@ -1417,7 +1440,9 @@ export default function ConstraintForm({ onClose }) {
                   <select
                     value={newSubjCredits}
                     onChange={e => setNewSubjCredits(Number(e.target.value))}
-                    className={`w-full px-2.5 py-2 rounded-lg text-xs font-semibold border focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer ${
+                    className={`w-full px-2.5 py-2 rounded-lg text-xs font-semibold border focus:outline-none focus:ring-1 ${
+                      newSubjCredits !== expectedCredits ? 'border-amber-500 focus:ring-amber-500' : 'focus:ring-blue-500'
+                    } cursor-pointer ${
                       isDark ? 'bg-[#090d16] border-[#1e293b] text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-900'
                     }`}
                   >
@@ -1432,7 +1457,7 @@ export default function ConstraintForm({ onClose }) {
                   <label className="text-xs font-semibold text-slate-400">L Hours</label>
                   <select
                     value={newSubjL}
-                    onChange={e => setNewSubjL(Number(e.target.value))}
+                    onChange={e => handleHoursChange('l', Number(e.target.value))}
                     className={`w-full px-2.5 py-2 rounded-lg text-xs font-semibold border focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer ${
                       isDark ? 'bg-[#090d16] border-[#1e293b] text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-900'
                     }`}
@@ -1448,7 +1473,7 @@ export default function ConstraintForm({ onClose }) {
                   <label className="text-xs font-semibold text-slate-400">T Hours</label>
                   <select
                     value={newSubjT}
-                    onChange={e => setNewSubjT(Number(e.target.value))}
+                    onChange={e => handleHoursChange('t', Number(e.target.value))}
                     className={`w-full px-2.5 py-2 rounded-lg text-xs font-semibold border focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer ${
                       isDark ? 'bg-[#090d16] border-[#1e293b] text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-900'
                     }`}
@@ -1464,7 +1489,7 @@ export default function ConstraintForm({ onClose }) {
                   <label className="text-xs font-semibold text-slate-400">P Hours</label>
                   <select
                     value={newSubjP}
-                    onChange={e => setNewSubjP(Number(e.target.value))}
+                    onChange={e => handleHoursChange('p', Number(e.target.value))}
                     className={`w-full px-2.5 py-2 rounded-lg text-xs font-semibold border focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer ${
                       isDark ? 'bg-[#090d16] border-[#1e293b] text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-900'
                     }`}
@@ -1475,6 +1500,22 @@ export default function ConstraintForm({ onClose }) {
                   </select>
                 </div>
               </div>
+
+              {/* Formula Rule Alert if Credits do not match L + T + max(0, P - 1) */}
+              {newSubjCredits !== expectedCredits && (
+                <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs flex items-center justify-between">
+                  <span>
+                    Formula: L ({newSubjL}) + T ({newSubjT}) + max(0, P - 1) ({Math.max(0, newSubjP - 1)}) = <strong>{expectedCredits} Credits</strong>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setNewSubjCredits(expectedCredits)}
+                    className="px-2 py-0.5 rounded bg-amber-500 text-slate-900 font-bold hover:bg-amber-400 transition-colors cursor-pointer"
+                  >
+                    Auto-Set to {expectedCredits}
+                  </button>
+                </div>
+              )}
 
               {/* Faculty In-Charge Assignment */}
               <div className="space-y-1">
@@ -1512,19 +1553,23 @@ export default function ConstraintForm({ onClose }) {
               </div>
 
               {/* LTP preview badge */}
-              <div className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
+              <div className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs ${
                 isDark ? 'bg-slate-900/60 border-slate-800 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-700'
               }`}>
                 <div className="flex items-center gap-2">
                   <span className="font-semibold">LTP Scheme:</span>
                   <span className="font-mono font-bold text-blue-500">({newSubjL}-{newSubjT}-{newSubjP})</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] px-2 py-0.5 rounded font-bold bg-blue-950/60 text-blue-300 border border-blue-800/40">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`text-[11px] px-2 py-0.5 rounded font-bold border ${
+                    newSubjCredits === expectedCredits
+                      ? 'bg-blue-950/60 text-blue-300 border-blue-800/40'
+                      : 'bg-amber-950/60 text-amber-300 border-amber-800/40'
+                  }`}>
                     {newSubjCredits} Credits
                   </span>
                   <span className="text-[11px] text-slate-400">
-                    {newSubjL + newSubjT} Theory + {newSubjP} Lab hrs/wk
+                    L + T + max(0, P - 1) = {newSubjL} + {newSubjT} + {Math.max(0, newSubjP - 1)} = {expectedCredits} Credits
                   </span>
                 </div>
               </div>

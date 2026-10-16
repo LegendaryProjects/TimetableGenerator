@@ -1354,6 +1354,14 @@ export default function ConstraintForm({ onClose }) {
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
           <button 
+            type="button"
+            onClick={() => setIsAddSubjectOpen(true)}
+            className="px-3.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add Subject</span>
+          </button>
+          <button 
             onClick={handleGenSingle} 
             disabled={isGenerating}
             className={`px-3.5 py-2 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 ${

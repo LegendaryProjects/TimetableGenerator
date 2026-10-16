@@ -1,8 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTimetable } from '../../context/TimetableContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { Users, GraduationCap, Lock, CheckCircle2, UserCheck } from 'lucide-react';
+import { Users, GraduationCap, Lock, CheckCircle2, UserCheck, BarChart3 } from 'lucide-react';
+import FacultyWorkloadModal from '../hod/FacultyWorkloadModal';
 
 const SEMESTERS_LIST = [
   { id: '1', label: 'Sem 1', value: 1 },
@@ -32,6 +33,7 @@ export default function ScheduleControls() {
 
   const isStudent = currentUser?.userType === 'Student' && !isHod;
   const isFaculty = currentUser?.userType === 'Faculty' && !isHod;
+  const [isWorkloadOpen, setIsWorkloadOpen] = useState(false);
 
   // Find professor object matching the logged-in faculty
   const loggedInFaculty = professors.find(
@@ -239,6 +241,25 @@ export default function ScheduleControls() {
           </>
         )}
       </div>
+      
+      {/* Faculty Workload Analyzer Trigger & Modal (DBIM Analytics Section 10.5) */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setIsWorkloadOpen(true)}
+          className={`h-10 px-3.5 rounded-xl text-sm font-semibold flex items-center gap-2 border transition-all ${
+            isDark 
+              ? 'bg-blue-950/40 hover:bg-blue-900/60 border-blue-800/60 text-blue-300' 
+              : 'bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700'
+          }`}
+          title="Analyze Weekly Faculty Teaching Workload (DBIM Section 10.5 Analytics)"
+        >
+          <BarChart3 className="w-4 h-4 text-blue-500" />
+          <span className="hidden sm:inline">Faculty Workload</span>
+          <span className="sm:hidden">Workload</span>
+        </button>
+      </div>
+
+      <FacultyWorkloadModal isOpen={isWorkloadOpen} onClose={() => setIsWorkloadOpen(false)} />
     </div>
   );
 }

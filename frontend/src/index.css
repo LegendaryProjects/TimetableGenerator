@@ -58,3 +58,21 @@ button, a, input, select {
   body { background: white !important; color: black !important; font-size: 10pt; font-family: 'Plus Jakarta Sans', sans-serif !important; }
   .no-print { display: none !important; }
 }
+
+/* DBIM & GIGW 3.0 Accessibility Standards */
+html.high-contrast {
+  filter: contrast(135%);
+}
+html.filter-invert {
+  filter: invert(100%) hue-rotate(180deg);
+}
+html.highlight-links a, html.highlight-links button {
+  outline: 2px dashed #f59e0b !important;
+  outline-offset: 2px !important;
+}
+html.font-large {
+  font-size: 110% !important;
+}
+html.font-xlarge {
+  font-size: 122% !important;
+}

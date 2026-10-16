@@ -1,15 +1,32 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTimetable } from '../../context/TimetableContext';
 import { useTheme } from '../../context/ThemeContext';
 import {
-  Calendar, LayoutGrid, Sliders, LogOut, Sun, Moon
+  Calendar, LayoutGrid, Sliders, LogOut, Sun, Moon, Search, Eye
 } from 'lucide-react';
+import GlobalSearchModal from './GlobalSearchModal';
+import AccessibilityModal from './AccessibilityModal';
 
 export default function Navbar() {
   const { currentUser, isHod, logout, formattedLoginTime, setAuthModalOpen, setAuthModalTab, setLoginType } = useAuth();
   const { isEditingHodStudio, setIsEditingHodStudio, draftTimetables } = useTimetable();
   const { isDark, toggleTheme } = useTheme();
+
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isAccessibilityOpen, setIsAccessibilityOpen] = useState(false);
+
+  // Global Ctrl+K / Cmd+K shortcut listener
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsSearchOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return (
     <header className={`sticky top-0 z-40 w-full border-b transition-colors ${
@@ -84,6 +101,40 @@ export default function Navbar() {
             </span>
           )}
 
+          {/* Global Search Omni-bar Button (Ctrl+K) */}
+          <button
+            onClick={() => setIsSearchOpen(true)}
+            className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+              isDark 
+                ? 'bg-[#0f172a] hover:bg-[#1e293b] border-[#1e293b] text-slate-300' 
+                : 'bg-slate-100 hover:bg-slate-200/80 border-slate-200 text-slate-700'
+            }`}
+            title="Global Timetable Search (Ctrl + K)"
+            aria-label="Global Search"
+          >
+            <Search className="w-3.5 h-3.5 text-blue-500" />
+            <span>Search...</span>
+            <kbd className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${
+              isDark ? 'bg-slate-800 border-slate-700 text-slate-400' : 'bg-white border-slate-300 text-slate-600'
+            }`}>
+              Ctrl K
+            </kbd>
+          </button>
+
+          {/* Accessibility Settings (DBIM Fig 44) */}
+          <button
+            onClick={() => setIsAccessibilityOpen(true)}
+            className={`p-2 rounded-lg border flex items-center justify-center transition-colors ${
+              isDark 
+                ? 'bg-[#0f172a] hover:bg-[#1e293b] border-[#1e293b] text-blue-400' 
+                : 'bg-white hover:bg-slate-100 border-slate-200 text-blue-600'
+            }`}
+            title="Accessibility Controls (GIGW 3.0 & DBIM Section 8)"
+            aria-label="Accessibility Options"
+          >
+            <Eye className="w-4 h-4" />
+          </button>
+
           {/* Theme Toggle Button */}
           <button
             onClick={toggleTheme}
@@ -157,6 +208,10 @@ export default function Navbar() {
           )}
         </div>
       </div>
+
+      {/* Global Accessibility and Omni-Search Modals */}
+      <GlobalSearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+      <AccessibilityModal isOpen={isAccessibilityOpen} onClose={() => setIsAccessibilityOpen(false)} />
     </header>
   );
 }

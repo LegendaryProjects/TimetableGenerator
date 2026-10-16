@@ -4,7 +4,8 @@ import { useTheme } from '../../context/ThemeContext';
 import ConstraintForm from './ConstraintForm';
 import DraftSidebar from './DraftSidebar';
 import InteractiveGrid from './InteractiveGrid';
-import { Sliders, ArrowLeft, ChevronUp, ChevronDown } from 'lucide-react';
+import FacultyWorkloadModal from './FacultyWorkloadModal';
+import { Sliders, ArrowLeft, ChevronUp, ChevronDown, BarChart3 } from 'lucide-react';
 
 export default function HodStudio() {
   const { 
@@ -14,6 +15,7 @@ export default function HodStudio() {
   } = useTimetable();
   const { isDark } = useTheme();
   const [showConstraints, setShowConstraints] = useState(draftTimetables.length === 0);
+  const [showWorkload, setShowWorkload] = useState(false);
 
   return (
     <div className="space-y-4">
@@ -50,6 +52,19 @@ export default function HodStudio() {
 
         <div className="flex items-center gap-2.5">
           <button
+            onClick={() => setShowWorkload(true)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition-all ${
+              isDark 
+                ? 'bg-blue-950/40 hover:bg-blue-900/60 border-blue-800/60 text-blue-300' 
+                : 'bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700'
+            }`}
+            title="Faculty Workload & Contact Hours Analyzer (DBIM Section 10.5 Analytics)"
+          >
+            <BarChart3 className="w-3.5 h-3.5 text-blue-500" />
+            <span>Workload Analytics</span>
+          </button>
+
+          <button
             onClick={() => setShowConstraints(!showConstraints)}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition-all ${
               showConstraints 
@@ -68,6 +83,9 @@ export default function HodStudio() {
 
       {/* Constraint Form Drawer */}
       {showConstraints && <ConstraintForm onClose={() => setShowConstraints(false)} />}
+
+      {/* Faculty Workload Modal */}
+      <FacultyWorkloadModal isOpen={showWorkload} onClose={() => setShowWorkload(false)} />
 
       {/* Main Studio Workspace: Sidebar + Interactive Timetable Matrix */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">

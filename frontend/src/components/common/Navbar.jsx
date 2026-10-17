@@ -16,17 +16,18 @@ export default function Navbar() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isAccessibilityOpen, setIsAccessibilityOpen] = useState(false);
 
-  // Global Ctrl+K / Cmd+K shortcut listener
+  // Global Ctrl+K / Cmd+K shortcut listener (restricted strictly to HoD)
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        if (!isHod) return;
         e.preventDefault();
         setIsSearchOpen(prev => !prev);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [isHod]);
 
   return (
     <header className={`sticky top-0 z-40 w-full border-b transition-colors ${
@@ -101,25 +102,27 @@ export default function Navbar() {
             </span>
           )}
 
-          {/* Global Search Omni-bar Button (Ctrl+K) */}
-          <button
-            onClick={() => setIsSearchOpen(true)}
-            className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
-              isDark 
-                ? 'bg-[#0f172a] hover:bg-[#1e293b] border-[#1e293b] text-slate-300' 
-                : 'bg-slate-100 hover:bg-slate-200/80 border-slate-200 text-slate-700'
-            }`}
-            title="Global Timetable Search (Ctrl + K)"
-            aria-label="Global Search"
-          >
-            <Search className="w-3.5 h-3.5 text-blue-500" />
-            <span>Search...</span>
-            <kbd className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${
-              isDark ? 'bg-slate-800 border-slate-700 text-slate-400' : 'bg-white border-slate-300 text-slate-600'
-            }`}>
-              Ctrl K
-            </kbd>
-          </button>
+          {/* Departmental Search Button (Ctrl+K) - Strictly for HoD only */}
+          {isHod && (
+            <button
+              onClick={() => setIsSearchOpen(true)}
+              className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                isDark 
+                  ? 'bg-[#0f172a] hover:bg-[#1e293b] border-[#1e293b] text-slate-300' 
+                  : 'bg-slate-100 hover:bg-slate-200/80 border-slate-200 text-slate-700'
+              }`}
+              title="Department Timetable Search (Ctrl + K)"
+              aria-label="Department Search"
+            >
+              <Search className="w-3.5 h-3.5 text-blue-500" />
+              <span>Search...</span>
+              <kbd className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${
+                isDark ? 'bg-slate-800 border-slate-700 text-slate-400' : 'bg-white border-slate-300 text-slate-600'
+              }`}>
+                Ctrl K
+              </kbd>
+            </button>
+          )}
 
           {/* Accessibility Settings (DBIM Fig 44) */}
           <button
@@ -209,8 +212,8 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Global Accessibility and Omni-Search Modals */}
-      <GlobalSearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+      {/* Accessibility Modal (Universal) and Department Search Modal (HoD Only) */}
+      {isHod && <GlobalSearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />}
       <AccessibilityModal isOpen={isAccessibilityOpen} onClose={() => setIsAccessibilityOpen(false)} />
     </header>
   );

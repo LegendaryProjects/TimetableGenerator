@@ -1,19 +1,65 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTimetable } from '../../context/TimetableContext';
 import { useTheme } from '../../context/ThemeContext';
-import { FolderKanban, CheckCircle2, CheckCheck, Trash2, Undo2, Sparkles, Check } from 'lucide-react';
+import { 
+  FolderKanban, CheckCircle2, CheckCheck, Trash2, Undo2, Sparkles, Check, Files, Users, Loader2 
+} from 'lucide-react';
+import { exportAllTimetablesAsPDF, exportCourseFacultyRosterPdf } from '../../services/pdfExport';
 
 export default function DraftSidebar() {
   const {
     timetables, activeDraftId, setActiveDraftId, selectedDepartment,
     setSelectedSemester, setSelectedYear, setSelectedSection, approveTimetable, disapproveTimetable,
-    approveAllDrafts, discardDraft
+    approveAllDrafts, discardDraft, subjects, departments, professors, allProfessors, workingDays, notify
   } = useTimetable();
   const { isDark } = useTheme();
+
+  const [exportingBatch, setExportingBatch] = useState(false);
+  const [exportingRoster, setExportingRoster] = useState(false);
 
   const deptTimetables = timetables.filter(t => t.department === selectedDepartment);
   const draftCount = deptTimetables.filter(t => t.status === 'DRAFT').length;
   const approvedCount = deptTimetables.filter(t => t.status === 'APPROVED').length;
+
+  const handleExportAll = async () => {
+    if (deptTimetables.length === 0) {
+      notify(`No generated timetables found for ${selectedDepartment}.`, 'warning');
+      return;
+    }
+    setExportingBatch(true);
+    try {
+      await exportAllTimetablesAsPDF(deptTimetables, { 
+        subjects, 
+        departments, 
+        department: selectedDepartment, 
+        workingDays 
+      });
+      notify(`Exported batch PDF with all ${deptTimetables.length} timetables`, 'success');
+    } catch (e) {
+      notify('Failed to export all timetables: ' + (e.message || 'Unknown error'), 'warning');
+    } finally {
+      setExportingBatch(false);
+    }
+  };
+
+  const handleExportRoster = async () => {
+    setExportingRoster(true);
+    try {
+      await exportCourseFacultyRosterPdf({
+        department: selectedDepartment,
+        departments,
+        subjects,
+        professors,
+        allProfessors,
+        timetables: deptTimetables
+      });
+      notify('Course & Faculty Allocation Roster downloaded successfully', 'success');
+    } catch (e) {
+      notify('Failed to export Course Roster: ' + (e.message || 'Unknown error'), 'warning');
+    } finally {
+      setExportingRoster(false);
+    }
+  };
 
   return (
     <div className={`border rounded-2xl p-4 space-y-4 shadow-sm transition-colors ${
@@ -41,6 +87,45 @@ export default function DraftSidebar() {
           }`}>
             {approvedCount} Published
           </span>
+        </div>
+      </div>
+
+      {/* Institutional PDF Batch Exports Section */}
+      <div className={`p-2.5 rounded-xl border space-y-2 ${
+        isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-50 border-slate-200'
+      }`}>
+        <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+          <span>Institutional PDF Exports</span>
+          <span className="text-[10px] font-mono text-blue-500">{deptTimetables.length} Timetables</span>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={handleExportAll}
+            disabled={deptTimetables.length === 0 || exportingBatch}
+            className={`py-1.5 px-2 rounded-lg text-[11px] font-semibold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              isDark 
+                ? 'bg-blue-950/40 hover:bg-blue-900/50 border-blue-800/60 text-blue-300' 
+                : 'bg-white hover:bg-blue-50 border-slate-300 text-blue-700'
+            } disabled:opacity-40`}
+            title="Export all generated timetables in this department into a single multi-page PDF"
+          >
+            {exportingBatch ? <Loader2 className="w-3 h-3 animate-spin" /> : <Files className="w-3 h-3 text-blue-500" />}
+            <span>Export All (PDF)</span>
+          </button>
+
+          <button
+            onClick={handleExportRoster}
+            disabled={exportingRoster}
+            className={`py-1.5 px-2 rounded-lg text-[11px] font-semibold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              isDark 
+                ? 'bg-purple-950/40 hover:bg-purple-900/50 border-purple-800/60 text-purple-300' 
+                : 'bg-white hover:bg-purple-50 border-slate-300 text-purple-700'
+            } disabled:opacity-40`}
+            title="Export official curriculum roster mapping every course to its assigned professor"
+          >
+            {exportingRoster ? <Loader2 className="w-3 h-3 animate-spin" /> : <Users className="w-3 h-3 text-purple-500" />}
+            <span>Course Roster</span>
+          </button>
         </div>
       </div>
 

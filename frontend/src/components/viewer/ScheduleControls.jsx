@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useTimetable } from '../../context/TimetableContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { Users, GraduationCap, Lock, CheckCircle2, UserCheck, BarChart3 } from 'lucide-react';
+import { Users, GraduationCap, Lock, CheckCircle2, UserCheck, BarChart3, BookOpen, Loader2 } from 'lucide-react';
 import FacultyWorkloadModal from '../hod/FacultyWorkloadModal';
+import { exportCourseFacultyRosterPdf } from '../../services/pdfExport';
 
 const SEMESTERS_LIST = [
   { id: '1', label: 'Sem 1', value: 1 },
@@ -26,7 +27,7 @@ export default function ScheduleControls() {
     selectedSection, setSelectedSection,
     selectedFacultyId, setSelectedFacultyId,
     viewMode, setViewMode,
-    professors
+    professors, allProfessors, subjects, departments, timetables, notify
   } = useTimetable();
   const { isHod, currentUser } = useAuth();
   const { isDark } = useTheme();
@@ -34,6 +35,26 @@ export default function ScheduleControls() {
   const isStudent = currentUser?.userType === 'Student' && !isHod;
   const isFaculty = currentUser?.userType === 'Faculty' && !isHod;
   const [isWorkloadOpen, setIsWorkloadOpen] = useState(false);
+  const [exportingRoster, setExportingRoster] = useState(false);
+
+  const handleExportRoster = async () => {
+    setExportingRoster(true);
+    try {
+      await exportCourseFacultyRosterPdf({
+        department: selectedDepartment,
+        departments,
+        subjects,
+        professors,
+        allProfessors,
+        timetables
+      });
+      notify('Course & Faculty Allocation Roster downloaded successfully', 'success');
+    } catch (e) {
+      notify('Failed to generate Course Roster: ' + (e.message || 'Unknown error'), 'warning');
+    } finally {
+      setExportingRoster(false);
+    }
+  };
 
   // Find professor object matching the logged-in faculty
   const loggedInFaculty = professors.find(
@@ -242,8 +263,23 @@ export default function ScheduleControls() {
         )}
       </div>
       
-      {/* Faculty Workload Analyzer Trigger & Modal (DBIM Analytics Section 10.5) */}
+      {/* Action Buttons: Course Roster PDF & Faculty Workload Analyzer */}
       <div className="flex items-center gap-2">
+        <button
+          onClick={handleExportRoster}
+          disabled={exportingRoster}
+          className={`h-10 px-3.5 rounded-xl text-sm font-semibold flex items-center gap-2 border transition-all ${
+            isDark 
+              ? 'bg-purple-950/40 hover:bg-purple-900/60 border-purple-800/60 text-purple-300' 
+              : 'bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-700'
+          } disabled:opacity-50 cursor-pointer`}
+          title="Export official curriculum roster mapping every course to its assigned professor"
+        >
+          {exportingRoster ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookOpen className="w-4 h-4 text-purple-500" />}
+          <span className="hidden sm:inline">Course Roster (PDF)</span>
+          <span className="sm:hidden">Roster</span>
+        </button>
+
         <button
           onClick={() => setIsWorkloadOpen(true)}
           className={`h-10 px-3.5 rounded-xl text-sm font-semibold flex items-center gap-2 border transition-all ${

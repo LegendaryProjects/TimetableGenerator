@@ -55,10 +55,10 @@ export default function Footer() {
               </ul>
             </div>
 
-            {/* Column 3: Help & Governance */}
+            {/* Column 3: Help */}
             <div className="space-y-2">
               <h4 className="font-bold uppercase tracking-wider text-[11px] text-slate-900 dark:text-slate-200">
-                Help & Governance
+                Help
               </h4>
               <ul className="space-y-1.5 text-[11px]">
                 <li>
@@ -81,17 +81,14 @@ export default function Footer() {
                     <span>Submit Schedule Feedback / Grievance</span>
                   </button>
                 </li>
-                <li className="text-slate-400 text-[11px]">
-                  Academic Audit: Zero-Collision Integrity Active
-                </li>
               </ul>
             </div>
           </div>
 
-          {/* Bottom Line: Just NITK and Copyright */}
+          {/* Bottom Line: Department of IT, NITK and Copyright */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left text-[11px] text-slate-500">
             <div className="font-medium text-slate-600 dark:text-slate-400">
-              NITK
+              Department of IT, NITK
             </div>
             <div className="shrink-0">
               © {new Date().getFullYear()} Sankalp, Abhishek, Ravi • All Rights Reserved

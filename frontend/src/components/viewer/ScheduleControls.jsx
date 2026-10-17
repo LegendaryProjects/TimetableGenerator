@@ -48,9 +48,9 @@ export default function ScheduleControls() {
         allProfessors,
         timetables
       });
-      notify('Course & Faculty Allocation Roster downloaded successfully', 'success');
+      notify('Course-Professor Allocation Roster downloaded successfully', 'success');
     } catch (e) {
-      notify('Failed to generate Course Roster: ' + (e.message || 'Unknown error'), 'warning');
+      notify('Failed to generate Course-Professor Roster: ' + (e.message || 'Unknown error'), 'warning');
     } finally {
       setExportingRoster(false);
     }
@@ -273,11 +273,11 @@ export default function ScheduleControls() {
               ? 'bg-purple-950/40 hover:bg-purple-900/60 border-purple-800/60 text-purple-300' 
               : 'bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-700'
           } disabled:opacity-50 cursor-pointer`}
-          title="Export official curriculum roster mapping every course to its assigned professor"
+          title="Export Course-Professor roster from generated timetables"
         >
           {exportingRoster ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookOpen className="w-4 h-4 text-purple-500" />}
-          <span className="hidden sm:inline">Course Roster (PDF)</span>
-          <span className="sm:hidden">Roster</span>
+          <span className="hidden sm:inline">Course-Professor</span>
+          <span className="sm:hidden">Course-Prof</span>
         </button>
 
         <button

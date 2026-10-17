@@ -106,11 +106,11 @@ export default function ExportPdfButton({ timetable }) {
         timetables: deptTimetables
       });
       setSuccessType('roster');
-      notify('Course & Faculty Allocation Roster PDF downloaded successfully', 'success');
+      notify('Course-Professor Allocation Roster downloaded successfully', 'success');
       setTimeout(() => setSuccessType(null), 3000);
     } catch (e) {
-      console.error('Course-Faculty Roster PDF Error:', e);
-      notify('Failed to generate Course Roster: ' + (e.message || 'Unknown error'), 'warning');
+      console.error('Course-Professor PDF Error:', e);
+      notify('Failed to generate Course-Professor Roster: ' + (e.message || 'Unknown error'), 'warning');
     } finally {
       setExportingType(null);
     }
@@ -214,10 +214,10 @@ export default function ExportPdfButton({ timetable }) {
               </div>
             </button>
 
-            {/* Option 3: Course & Faculty Allocation Roster */}
+            {/* Option 3: Course-Professor Allocation Roster */}
             <button
               onClick={handleExportCourseFacultyRoster}
-              disabled={!!exportingType}
+              disabled={validTimetablesCount === 0 || !!exportingType}
               className={`w-full p-2.5 rounded-xl text-left flex items-start gap-3 transition-colors ${
                 isDark ? 'hover:bg-slate-800/70 text-slate-200' : 'hover:bg-slate-50 text-slate-800'
               } disabled:opacity-40 cursor-pointer`}
@@ -227,13 +227,13 @@ export default function ExportPdfButton({ timetable }) {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-xs font-bold flex items-center justify-between">
-                  <span>Courses & Faculty Roster</span>
+                  <span>Course-Professor</span>
                   <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-500/10 text-purple-500 font-bold">
-                    Roster PDF
+                    PDF
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-400">
-                  Official syllabus courses & corresponding professors
+                  Course and assigned professor allocations from generated schedules
                 </p>
               </div>
             </button>

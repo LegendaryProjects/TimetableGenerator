@@ -619,7 +619,7 @@ export async function exportCourseFacultyRosterPdf(academicOptions = {}) {
       head: [
         [{ content: `Department of ${deptFullName}`, styles: { halign: 'center', fontStyle: 'bold', fontSize: 11, font: 'times' } }],
         [{ content: 'National Institute of Technology Karnataka Surathkal-575025', styles: { halign: 'center', fontStyle: 'bold', fontSize: 10, font: 'times' } }],
-        [{ content: `Course Curriculum & Faculty Allocation Roster - Academic Year 2026 - 2027`, styles: { halign: 'center', fontStyle: 'bold', fontSize: 9.5, font: 'times' } }]
+        [{ content: `Course-Professor Allocation Roster - Academic Year 2026 - 2027`, styles: { halign: 'center', fontStyle: 'bold', fontSize: 9.5, font: 'times' } }]
       ],
       body: [],
       startY: currentY,
@@ -638,44 +638,31 @@ export async function exportCourseFacultyRosterPdf(academicOptions = {}) {
 
     currentY = doc.lastAutoTable.finalY + 1.5;
 
-    // Compile courses and corresponding professors
-    const subjectsList = Array.isArray(academicOptions.subjects) ? academicOptions.subjects : [];
+    // Filter active generated timetables
     const timetablesList = Array.isArray(academicOptions.timetables) 
       ? academicOptions.timetables.filter(t => !dept || t.department === dept || dept === 'ALL') 
       : [];
-    const professorsList = Array.isArray(academicOptions.allProfessors) && academicOptions.allProfessors.length > 0 
-      ? academicOptions.allProfessors 
-      : (Array.isArray(academicOptions.professors) ? academicOptions.professors : []);
 
+    if (timetablesList.length === 0) {
+      throw new Error(`No generated timetables found for ${deptFullName}. Please generate timetables first to view the Course-Professor roster.`);
+    }
+
+    const subjectsList = Array.isArray(academicOptions.subjects) ? academicOptions.subjects : [];
     const courseMap = new Map();
 
-    // 1. Ingest all predefined subjects
-    subjectsList.forEach(s => {
-      if (dept && dept !== 'ALL' && s.department && s.department !== dept) return;
-      const code = (s.code || s.id || '').trim().toUpperCase();
-      if (!code) return;
-
-      const isLab = s.type === 'lab' || s.requires_lab;
-      const ltp = s.ltp ? (s.ltp.startsWith('(') ? s.ltp : `(${s.ltp})`) : (isLab ? '(0-0-3)' : `(${s.credits || 3}-0-0)`);
-      const credits = s.credits || (isLab ? 2 : 3);
-      const sem = s.semester || (s.year ? (s.year * 2 - 1) : 5);
-
-      courseMap.set(code, {
-        code,
-        name: s.name || code,
-        semester: sem,
-        type: isLab ? 'Practical Lab' : 'Theory',
-        ltp,
-        credits,
-        department: s.department || deptCode,
-        defaultFacultyName: s.facultyName || professorsList.find(p => p.id === s.defaultFaculty)?.name || null,
-        sectionAllocations: {}
+    const findSubjectMeta = (code, name) => {
+      const cleanCode = (code || '').trim().toLowerCase();
+      const cleanName = (name || '').trim().toLowerCase();
+      return subjectsList.find(s => {
+        const sCode = (s.code || s.id || '').trim().toLowerCase();
+        const sName = (s.name || '').trim().toLowerCase();
+        return (cleanCode && sCode === cleanCode) || (cleanName && sName === cleanName);
       });
-    });
+    };
 
-    // 2. Scan active generated timetables to collect live section assignments and any custom-added courses
+    // Extract subjects and assigned professors ONLY from active generated timetables
     timetablesList.forEach(tt => {
-      const sem = tt.semester || (tt.year ? (tt.year * 2 - 1) : 5);
+      const sem = Number(tt.semester || (tt.year ? (tt.year * 2 - 1) : 5));
       const sec = tt.section || 'A';
       const cohortKey = `Sem ${sem} Sec ${sec}`;
 
@@ -685,31 +672,47 @@ export async function exportCourseFacultyRosterPdf(academicOptions = {}) {
           Object.values(daySlots).forEach(cell => {
             if (!cell || !cell.subjectCode) return;
             const code = cell.subjectCode.trim().toUpperCase();
+            const matchedMeta = findSubjectMeta(cell.subjectCode, cell.subjectName || cell.title);
+
             let entry = courseMap.get(code);
             if (!entry) {
-              const isLab = cell.isLab || cell.type === 'lab';
-              const ltp = cell.ltp ? (cell.ltp.startsWith('(') ? cell.ltp : `(${cell.ltp})`) : (isLab ? '(0-0-3)' : '(3-0-0)');
+              const isLab = cell.isLab || cell.type === 'lab' || matchedMeta?.type === 'lab';
+              let ltp = cell.ltp || matchedMeta?.ltp;
+              if (ltp) {
+                ltp = String(ltp).trim();
+                if (!ltp.startsWith('(')) ltp = `(${ltp})`;
+              } else {
+                ltp = isLab ? '(0-0-3)' : `(${cell.credits || matchedMeta?.credits || 3}-0-0)`;
+              }
+
+              const credits = cell.credits || matchedMeta?.credits || (isLab ? 2 : 3);
+              const courseName = cell.subjectName || matchedMeta?.name || cell.title || code;
+
               entry = {
                 code,
-                name: cell.subjectName || cell.title || code,
+                name: courseName,
                 semester: sem,
                 type: isLab ? 'Practical Lab' : 'Theory',
                 ltp,
-                credits: cell.credits || (isLab ? 2 : 3),
+                credits,
                 department: tt.department || deptCode,
-                defaultFacultyName: cell.facultyName || null,
                 sectionAllocations: {}
               };
               courseMap.set(code, entry);
             }
 
-            if (cell.facultyName) {
-              entry.sectionAllocations[cohortKey] = cell.facultyName;
+            const profName = cell.facultyName || cell.faculty || matchedMeta?.facultyName;
+            if (profName) {
+              entry.sectionAllocations[cohortKey] = profName;
             }
           });
         });
       }
     });
+
+    if (courseMap.size === 0) {
+      throw new Error(`The generated timetables for ${deptFullName} do not contain scheduled courses yet.`);
+    }
 
     // Sort courses by semester ascending, then by course code alphabetically
     const sortedCourses = Array.from(courseMap.values()).sort((a, b) => {
@@ -722,7 +725,6 @@ export async function exportCourseFacultyRosterPdf(academicOptions = {}) {
     const labCount = sortedCourses.filter(c => c.type === 'Practical Lab').length;
     const uniqueProfessors = new Set();
     sortedCourses.forEach(c => {
-      if (c.defaultFacultyName) uniqueProfessors.add(c.defaultFacultyName);
       Object.values(c.sectionAllocations).forEach(f => uniqueProfessors.add(f));
     });
 
@@ -837,13 +839,13 @@ export async function exportCourseFacultyRosterPdf(academicOptions = {}) {
         if (data.pageNumber > 1) {
           doc.setFont('times', 'bold');
           doc.setFontSize(8.5);
-          doc.text(`Department of ${deptFullName} - Course Curriculum & Faculty Allocation Roster (Contd.)`, margin, 8);
+          doc.text(`Department of ${deptFullName} - Course-Professor Allocation Roster (Contd.)`, margin, 8);
         }
         doc.setFont('times', 'normal');
         doc.setFontSize(8.0);
         doc.setTextColor(100, 100, 100);
         doc.text(
-          `NITK Surathkal • Course-Faculty Allocation Roster • Page ${data.pageNumber}`,
+          `NITK Surathkal • Course-Professor Allocation Roster • Page ${data.pageNumber}`,
           pageWidth / 2,
           pageHeight - 6.0,
           { align: 'center' }
@@ -873,11 +875,11 @@ export async function exportCourseFacultyRosterPdf(academicOptions = {}) {
     doc.text('Sd/-', pageWidth - margin - 25, sigY - 4.5, { align: 'center' });
     doc.text('Dean (Academic)', pageWidth - margin - 25, sigY, { align: 'center' });
 
-    const filename = `NITK_${deptCode}_Course_Faculty_Allocations_${downloadDateStr}.pdf`;
+    const filename = `NITK_${deptCode}_Course_Professor_${downloadDateStr}.pdf`;
     doc.save(filename);
     return true;
   } catch (error) {
-    console.error('Course-Faculty Roster PDF Generation Error:', error);
+    console.error('Course-Professor PDF Generation Error:', error);
     throw error;
   }
 }

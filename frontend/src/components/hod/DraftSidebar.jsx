@@ -53,9 +53,9 @@ export default function DraftSidebar() {
         allProfessors,
         timetables: deptTimetables
       });
-      notify('Course & Faculty Allocation Roster downloaded successfully', 'success');
+      notify('Course-Professor Allocation Roster downloaded successfully', 'success');
     } catch (e) {
-      notify('Failed to export Course Roster: ' + (e.message || 'Unknown error'), 'warning');
+      notify('Failed to export Course-Professor Roster: ' + (e.message || 'Unknown error'), 'warning');
     } finally {
       setExportingRoster(false);
     }
@@ -115,16 +115,16 @@ export default function DraftSidebar() {
 
           <button
             onClick={handleExportRoster}
-            disabled={exportingRoster}
+            disabled={deptTimetables.length === 0 || exportingRoster}
             className={`py-1.5 px-2 rounded-lg text-[11px] font-semibold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
               isDark 
                 ? 'bg-purple-950/40 hover:bg-purple-900/50 border-purple-800/60 text-purple-300' 
                 : 'bg-white hover:bg-purple-50 border-slate-300 text-purple-700'
             } disabled:opacity-40`}
-            title="Export official curriculum roster mapping every course to its assigned professor"
+            title="Export Course-Professor roster from generated timetables"
           >
             {exportingRoster ? <Loader2 className="w-3 h-3 animate-spin" /> : <Users className="w-3 h-3 text-purple-500" />}
-            <span>Course Roster</span>
+            <span>Course-Professor</span>
           </button>
         </div>
       </div>

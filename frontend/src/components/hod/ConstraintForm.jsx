@@ -1567,9 +1567,6 @@ export default function ConstraintForm({ onClose }) {
                   }`}>
                     {newSubjCredits} Credits
                   </span>
-                  <span className="text-[11px] text-slate-400">
-                    L + T + max(0, P - 1) = {newSubjL} + {newSubjT} + {Math.max(0, newSubjP - 1)} = {expectedCredits} Credits
-                  </span>
                 </div>
               </div>
 
